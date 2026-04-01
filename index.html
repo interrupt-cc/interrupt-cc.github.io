@@ -91,13 +91,24 @@
         document.querySelectorAll('.post-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 const url = link.getAttribute('href');
-                if (!url) return;
+                if (!url || url === '#') return;
                 e.preventDefault();
                 const overlay = document.getElementById('post-overlay');
+                const frame = document.getElementById('post-frame');
+                const win = document.getElementById('post-window');
                 const title = document.querySelector('.window-title');
                 
                 title.textContent = 'POST::READ_SYSTEM';
                 frame.src = url;
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+                // Center window
+                const winW = win.offsetWidth || 800;
+                const winH = win.offsetHeight || 600;
+                win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
+                win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
+                win.style.transform = 'none';
             });
         });
 
