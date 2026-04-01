@@ -147,6 +147,8 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 let saturation = 0;
 let isBuilding = false;
 let burstMode = 0; // 0: SNAP, 1: BUILD
+let pinchSpike = 0;
+let nextPinchTime = 0;
 let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
@@ -162,10 +164,11 @@ function render(time) {
     }
 
     // Use values from CRT_CONFIG if available
-    const config = window.CRT_CONFIG || { freq: 18, snap: 1.8 };
+    const config = window.CRT_CONFIG || { pinch: 0.15, freq: 4, snap: 1.8 };
 
-    // Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
-    const nextBurstThreshold = config.freq + (lastBurstTime % 20); // semi-random interval
+    // 1. Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
+    const burstFreq = config.freq || 4.0;
+    const nextBurstThreshold = burstFreq + (Math.random() * burstFreq * 0.5);
     
     if (!isBuilding && saturation === 0 && time - lastBurstTime > nextBurstThreshold) {
         burstMode = Math.random() > 0.5 ? 1 : 0;
@@ -182,12 +185,11 @@ function render(time) {
 
     if (isBuilding) {
         // Capacitor charging logic
-        saturation += (0.001 + Math.random() * 0.004);
-        // Add some "stutter" to the build
-        if (Math.random() > 0.9) saturation -= 0.02;
+        saturation += (0.002 + Math.random() * 0.008); 
+        if (Math.random() > 0.9) saturation -= 0.04;
         
         if (saturation > 0.35) {
-            saturation = config.snap; // THE SNAP
+            saturation = config.snap; 
             isBuilding = false;
             lastBurstTime = time;
         }
@@ -197,12 +199,27 @@ function render(time) {
         if (saturation < 0.005) saturation = 0;
     }
 
-    // Random Glitch Logic
+    // 2. Periodic Geometry Pinch Spikes
+    const pInterval = config['p-interval'] || 5.0;
+    const pRandom = config['p-random'] || 0.5;
+
+    if (time > nextPinchTime) {
+        pinchSpike = 0.4 * (0.5 + Math.random() * pRandom);
+        const scatter = (Math.random() - 0.5) * 2.0 * pRandom;
+        nextPinchTime = time + pInterval * (1.0 + scatter);
+    }
+
+    if (pinchSpike > 0) {
+        pinchSpike *= 0.94; // Decay
+        if (pinchSpike < 0.001) pinchSpike = 0;
+    }
+
+    // 3. Random Glitch Logic
     if (time - lastGlitchTime > 2.0 + Math.random() * 5.0) {
         glitchOffset = (Math.random() - 0.5) * 0.2;
         lastGlitchTime = time;
     } else {
-        glitchOffset *= 0.5; // Snap back quickly
+        glitchOffset *= 0.5; 
         if (Math.abs(glitchOffset) < 0.001) glitchOffset = 0;
     }
 
@@ -215,7 +232,7 @@ function render(time) {
     gl.uniform1f(timeUniformLocation, time);
     gl.uniform1f(saturationUniformLocation, saturation);
     gl.uniform1f(glitchUniformLocation, glitchOffset);
-    gl.uniform1f(pinchUniformLocation, config.pinch || 0.15);
+    gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
     gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);

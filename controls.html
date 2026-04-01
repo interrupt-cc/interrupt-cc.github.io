@@ -36,13 +36,23 @@
     </div>
 
     <div class="control-group">
+        <label>GEOMETRY_INTERVAL [<span id="p-interval-val">5</span>s]</label>
+        <input type="range" id="p-interval" min="0.5" max="20" step="0.5" value="5">
+    </div>
+
+    <div class="control-group">
+        <label>GEOMETRY_RANDOM [<span id="p-random-val">0.5</span>]</label>
+        <input type="range" id="p-random" min="0" max="1" step="0.05" value="0.5">
+    </div>
+
+    <div class="control-group">
         <label>NOISE_FLOOR [<span id="noise-val">0.25</span>]</label>
         <input type="range" id="noise" min="0" max="1" step="0.01" value="0.25">
     </div>
 
     <div class="control-group">
-        <label>BURST_INTERVAL [<span id="freq-val">18</span>s]</label>
-        <input type="range" id="freq" min="5" max="60" step="1" value="18">
+        <label>BURST_INTERVAL [<span id="freq-val">4</span>s]</label>
+        <input type="range" id="freq" min="0.25" max="10" step="0.25" value="4">
     </div>
 
     <div class="control-group">
@@ -51,7 +61,7 @@
     </div>
 
     <script>
-        const ids = ['pinch', 'noise', 'freq', 'snap'];
+        const ids = ['pinch', 'p-interval', 'p-random', 'noise', 'freq', 'snap'];
         function broadcast() {
             const config = {};
             ids.forEach(id => {
