@@ -37,6 +37,8 @@ This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NP
 ```
 ├── index.html
 ├── README.md
+├── docs/
+│   └── AUDIO_ENGINE.md  <-- STOCHASTIC_AUDIO Synthesis Specs
 ├── manifest/
 │   ├── cv.html          <-- Generated Manifest
 │   └── cv-template.html <-- Redaction Template
@@ -47,6 +49,7 @@ This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NP
 │   ├── lines.js
 │   ├── chat.js
 │   ├── crypt-lib.js
+│   ├── audio-core.js
 │   └── cv.js
 ├── tools/
 │   ├── crypt-cli.js
@@ -59,4 +62,14 @@ This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NP
 
 ---
 
+## 05: STOCHASTIC_AUDIO (AudioWorklet Engine)
+A deeply physical sound-design wrapper enabling background mathematics without crushing DOM performance.
+
+- **Dub Techno Synthesis**: Emulates classic dub hardware configurations (450ms recursive delay / 800Hz lowpass filter over a C4 Minor 7th drone) directly in Javascript.
+- **Offline Polyphony**: Generates an isolated `AudioWorkletProcessor` via Blob templates to bypass Chrome's `file://` CORS destruction stringently, assuring zero-runstream dependencies. 
+- Details exactly mapped here via `Float32Array` lock-free boundaries: [docs/AUDIO_ENGINE.md](docs/AUDIO_ENGINE.md).
+
+---
+
 [STOCHASTIC_SYSTEM_OK] // [SIGNAL_CONNECTED]
+
