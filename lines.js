@@ -61,17 +61,18 @@ const lfsSource = `
         float linePattern = fract(jitteredX * grid);
         float lineMask = step(0.99, linePattern);
         
-        // 2. Power Loss Logic (Distance from dynamic center)
-        float distY = abs(uv.y - u_power_center.y);
+        // 2. Power Loss Logic (Distance from TOP of canvas)
+        // They now always touch the top and 'lose power' as they extend down
+        float distFromTop = 1.0 - uv.y;
         
         // Edge scaling: falloff is more aggressive (lines are shorter) at the horizontal edges
-        float edgeScale = 1.0 + 4.0 * pow(abs(uv.x - 0.5), 2.0); 
-        float effectiveFalloff = (5.0 + u_falloff * 25.0) * edgeScale;
+        float edgeScale = 1.0 + 5.0 * pow(abs(uv.x - 0.5), 2.0); 
+        float effectiveFalloff = (2.0 + u_falloff * 30.0) * edgeScale;
         
-        // Falloff makes lines 'shorter' if they are far from the power center
-        float power = exp(-distY * effectiveFalloff);
+        // Power decays as we move down from the top 
+        float power = exp(-distFromTop * effectiveFalloff);
         
-        // Horizontal clamping: lines also lose power if too far horizontally from center
+        // Horizontal clamping: lines still lose power based on distance from the drifting horizontal center
         float distX = abs(uv.x - u_power_center.x);
         power *= exp(-distX * 2.0);
 
