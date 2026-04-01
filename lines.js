@@ -63,8 +63,13 @@ const lfsSource = `
         
         // 2. Power Loss Logic (Distance from dynamic center)
         float distY = abs(uv.y - u_power_center.y);
+        
+        // Edge scaling: falloff is more aggressive (lines are shorter) at the horizontal edges
+        float edgeScale = 1.0 + 4.0 * pow(abs(uv.x - 0.5), 2.0); 
+        float effectiveFalloff = (5.0 + u_falloff * 25.0) * edgeScale;
+        
         // Falloff makes lines 'shorter' if they are far from the power center
-        float power = exp(-distY * (5.0 + u_falloff * 20.0));
+        float power = exp(-distY * effectiveFalloff);
         
         // Horizontal clamping: lines also lose power if too far horizontally from center
         float distX = abs(uv.x - u_power_center.x);
