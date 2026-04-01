@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x1 // 4k pages of pain</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .post-content {
+            max-width: 800px;
+            margin: 2rem auto;
+            border: 1px solid var(--dim-color);
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: var(--glow-shadow);
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link:before {
+            content: "<-- ";
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <a href="../index.html" class="back-link">RETURN_TO_ROOT</a>
+        
+        <article class="post-content">
+            <header>
+                <h2>0x1: 4k pages of pain</h2>
+                <p class="post-date">DATE: 2026-03-31 | PROJECT: BEAGLEBONE_BARE_METAL</p>
+            </header>
+            
+            <p>The MMU is not your friend. When you're working on the BeagleBone Black (AM335x), setting up the page tables for the first time is a rite of passage. 4KB pages are the standard, but the alignment requirements and the TTB (Translation Table Base) register specifics are... unforgiving.</p>
+
+            <pre><code>// Placeholder for future Rust bare-metal code
+pub fn init_mmu() {
+    // 1. Define translation table
+    // 2. Map peripheral space (UART, GPIO, etc.)
+    // 3. Enable MMU and Data Cache
+}</code></pre>
+
+            <p>More to come as I descend further into the silicon.</p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+</body>
+</html>

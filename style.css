@@ -1,0 +1,149 @@
+:root {
+  --bg-color: #08090a;
+  --text-color: #00e5ff; /* Cyan */
+  --accent-color: #ff00cc; /* Neon Pink for highlights */
+  --dim-color: #008ba3; /* Dimmer cyan for details */
+  --font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Courier New', monospace;
+  --glow-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  line-height: 1.6;
+  padding: 2rem;
+  overflow-x: hidden;
+  position: relative;
+}
+
+#crt-static {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  opacity: 0.12; /* Subtle background */
+  pointer-events: none;
+  image-rendering: pixelated; /* Sharp chunky noise */
+}
+
+/* Scanline effect */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.2) 50%
+  ),
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.05),
+    rgba(0, 255, 0, 0.02),
+    rgba(0, 0, 255, 0.05)
+  );
+  z-index: 1000;
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
+}
+
+header {
+  max-width: 800px;
+  margin: 0 auto 3rem auto;
+  border-bottom: 1px solid var(--dim-color);
+  padding-bottom: 1rem;
+}
+
+.intro {
+  font-style: italic;
+  color: var(--dim-color);
+  margin-bottom: 2rem;
+}
+
+main {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.post-list {
+  list-style: none;
+}
+
+.post-item {
+  margin-bottom: 1.5rem;
+  border: 1px solid transparent;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.post-item:hover {
+  border-color: var(--text-color);
+  box-shadow: var(--glow-shadow);
+  transform: translateX(5px);
+}
+
+.post-id {
+  color: var(--accent-color);
+  margin-right: 1rem;
+  font-weight: bold;
+}
+
+.post-link {
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+
+.post-link:hover {
+  text-decoration: underline;
+}
+
+.post-date {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--dim-color);
+  margin-top: 0.5rem;
+}
+
+footer {
+  text-align: center;
+  margin-top: 5rem;
+  font-size: 0.7rem;
+  color: var(--dim-color);
+  letter-spacing: 2px;
+}
+
+h1 {
+  font-size: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 1rem;
+  text-shadow: var(--glow-shadow);
+}
+
+/* Animations */
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.95; }
+  25% { opacity: 0.98; }
+  30% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+body {
+  animation: flicker 0.1s infinite alternate;
+}
