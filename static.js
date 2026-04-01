@@ -46,6 +46,7 @@ const fsSource = `
     uniform vec2 u_ghost_pos;
     uniform float u_ghost_radius;
     uniform float u_ghost_alpha;
+    uniform float u_ghost_stretch;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -114,10 +115,9 @@ const fsSource = `
         // 6. SINGLE PHANTOM INK DRIP
         // Highly localized CMYK distortion
         if (u_ghost_alpha > 0.01) {
-            // Distort the distance check to feel like a dripping 'blob'
             vec2 ghostDir = uv - u_ghost_pos;
-            // Vertical stretch: makes the distance check squashed vertically (elongated visual)
-            ghostDir.y *= 0.5; 
+            // Apply u_ghost_stretch to elongate vertically
+            ghostDir.y *= (1.0 / u_ghost_stretch); 
             
             float dist = length(ghostDir);
             float ghostMask = smoothstep(u_ghost_radius, u_ghost_radius - 0.02, dist);
@@ -169,6 +169,7 @@ const bleedUniformLocation = gl.getUniformLocation(program, "u_bleed");
 const ghostPosLoc = gl.getUniformLocation(program, "u_ghost_pos");
 const ghostRadiusLoc = gl.getUniformLocation(program, "u_ghost_radius");
 const ghostAlphaLoc = gl.getUniformLocation(program, "u_ghost_alpha");
+const ghostStretchLoc = gl.getUniformLocation(program, "u_ghost_stretch");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -197,6 +198,7 @@ let ghostStartTime = 0;
 let ghostPos = [0.5, 0.5];
 let ghostRadius = 0;
 let ghostAlpha = 0;
+let ghostStretch = 1.0;
 let lastGhostTime = 0;
 
 function render(time) {
@@ -273,15 +275,25 @@ function render(time) {
         const elapsed = time - ghostStartTime;
         const attack = 1.0; 
         ghostAlpha = Math.min(1.0, elapsed / attack);
-        ghostRadius = ghostAlpha * 0.04; // grow to line size
+        ghostRadius = ghostAlpha * 0.05; 
+        ghostStretch = 1.0;
         if (elapsed > attack) {
             ghostState = 'DRIP';
             ghostStartTime = time;
         }
     } else if (ghostState === 'DRIP') {
         const elapsed = time - ghostStartTime;
-        ghostPos[1] -= elapsed * 0.005; // Drip down the page
-        if (ghostPos[1] < -0.1 || elapsed > 8.0) {
+        const dripDuration = 6.0;
+        const progress = Math.min(1.0, elapsed / dripDuration);
+        
+        // Drip Down
+        ghostPos[1] -= elapsed * 0.005; 
+        
+        // ELONGATE and THIN based on progress
+        ghostStretch = 1.0 + progress * 6.0; // stretch up to 7x
+        ghostRadius = 0.05 * (1.0 - progress * 0.6); // thin out 60%
+        
+        if (ghostPos[1] < -0.2 || progress >= 1.0) {
             ghostState = 'FADE';
             ghostStartTime = time;
         }
@@ -320,6 +332,7 @@ function render(time) {
     gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);
     gl.uniform1f(ghostRadiusLoc, ghostRadius);
     gl.uniform1f(ghostAlphaLoc, ghostAlpha);
+    gl.uniform1f(ghostStretchLoc, ghostStretch);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
