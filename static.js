@@ -47,35 +47,46 @@ const fsSource = `
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
         
-        // Apply occasional glitch offset (horizontal shift)
+        // 1. Toggled Scanning Modes (Vertical vs Diagonal)
+        // Switches every ~6 seconds using a stepped random
+        float modeToggle = step(0.5, random(vec2(floor(u_time * 0.16), 11.0)));
+        float rollAngle = modeToggle * 0.8; // 0 or ~45 deg
+        
+        // 2. Primary interference bar
+        float rollFreq = 5.0;
+        float rollPhase = u_time * 1.5;
+        float rollVal = sin((uv.y + uv.x * rollAngle) * rollFreq + rollPhase);
+        
+        // 3. Vertical Pinch (Electromagnetic distortion)
+        // Warps coordinates when near a primary interference peak
+        if (rollVal > 0.7) {
+            float pinchIntensity = (rollVal - 0.7) * 0.15;
+            // Oscillate the pinch slightly for "buzzing" feel
+            uv.y += pinchIntensity * sin(u_time * 15.0) * 0.02;
+        }
+
+        // 4. Secondary small bars (High speed, vertical only)
+        float smallRoll = sin(uv.y * 25.0 - u_time * 6.0);
+        
+        // Global horizontal glitching
         if (u_glitch_offset > 0.0) {
-            // Only shift specific horizontal bands during a glitch
-            float band = step(0.1, random(vec2(floor(uv.y * 10.0), u_time)));
-            if (band > 0.5) {
-                uv.x += u_glitch_offset;
-            }
+            float band = step(0.1, random(vec2(floor(uv.y * 15.0), u_time)));
+            if (band > 0.5) uv.x += u_glitch_offset;
         }
 
-        // Generate noise
-        // Combining spatial and temporal randomness for "boiling" static
-        float n = random(uv + fract(u_time * 0.77));
+        // 5. Dynamic Noise and Interference assembly
+        float n = random(uv + fract(u_time * 0.88));
         
-        // Rolling interference bands (Vertical + Diagonal)
-        float rollAngle = 0.8; // 45 degrees
-        float rollV = sin(uv.y * 5.0 + u_time * 1.5);
-        float rollD = sin((uv.y + uv.x * rollAngle) * 5.0 + u_time * 2.0);
+        // Randomized brightness intensities
+        float primaryBrightness = 0.12 * random(vec2(floor(u_time * 10.0), 3.0));
+        float secondaryBrightness = 0.06 * random(vec2(floor(u_time * 14.0), 7.0));
         
-        // Occasional "sync break" intensity
-        float syncBreak = step(0.6, random(vec2(floor(u_time * 0.5), 1.0)));
-        if (rollV > 0.95 || (syncBreak > 0.5 && rollD > 0.98)) {
-           n += 0.12;
-        }
+        if (rollVal > 0.95) n += primaryBrightness;
+        if (smallRoll > 0.99) n += secondaryBrightness;
 
-        // Saturation burst logic
+        // Saturation burst and standard scanlines
         float finalColor = n + u_saturation;
-
-        // Subtle scanline effect
-        float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.05;
+        float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.06;
         finalColor -= scanline;
 
         gl_FragColor = vec4(vec3(finalColor), 1.0);
