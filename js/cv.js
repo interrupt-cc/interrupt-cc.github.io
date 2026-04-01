@@ -25,16 +25,16 @@ const DecryptManager = {
     let height = canvas.height;
     
     // Hardware resonance targets
-    // Build your CV using password: "40-120"
+    // Build your CV using password: "40-240"
     const targetAmp = 40; 
-    const targetFreq = 120; // Re-mapped to Frequency
+    const targetFreq = 240; // Re-mapped to Frequency
     
     let userAmp = 10;
-    let userFreq = 50;
+    let userFreq = 480; // Starts 1 octave ABOVE target
     let isDragging = false;
     let animationId;
 
-    const chordFrequencies = [65.41, 77.78, 98.00, 116.54]; // C2 Minor 7th (C-Eb-G-Bb)
+    const chordFrequencies = [261.63, 311.13, 392.00, 466.16]; // C4 Minor 7th
     const chordColors = [
         'rgba(255, 0, 204, 0.15)', // Magenta
         'rgba(249, 215, 28, 0.15)',// Yellow
@@ -94,8 +94,8 @@ const DecryptManager = {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        // Map X to Frequency (50-300Hz), Y to Amp (0-100)
-        userFreq = Math.floor(50 + (x / rect.width) * 250);
+        // Map X to Frequency (50-450Hz), Y to Amp (0-100)
+        userFreq = Math.floor(50 + (x / rect.width) * 400);
         userAmp = Math.floor(Math.abs(y - rect.height/2) * (100 / (rect.height/2)));
 
         if (window.STOCHASTIC_AUDIO) {
@@ -130,8 +130,8 @@ const DecryptManager = {
                 document.getElementById('osc-status').style.color = 'var(--text-color)';
             }, 1000);
             if (window.CRT_ABERRATION) window.CRT_ABERRATION();
-            userAmp = 10; userFreq = 50; // Reset
-            if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.updateUserSync(50, 0);
+            userAmp = 10; userFreq = 480; // Reset to 1 octave above
+            if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.updateUserSync(480, 0);
         }
     };
     

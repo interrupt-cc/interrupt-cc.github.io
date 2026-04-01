@@ -35,19 +35,19 @@ class StochasticSynthProcessor extends AudioWorkletProcessor {
         super();
         this.sampleRate = 48000; // Will be passed from context if needed, default standard
 
-        // 1. Dub Techno Chord (C minor 7th)
+        // 1. Dub Techno Chord (C4 minor 7th)
         this.chordOscs = [
-            new SineOscillator(this.sampleRate), // C2
-            new SineOscillator(this.sampleRate), // Eb2
-            new SineOscillator(this.sampleRate), // G2
-            new SineOscillator(this.sampleRate)  // Bb2
+            new SineOscillator(this.sampleRate), // C4
+            new SineOscillator(this.sampleRate), // Eb4
+            new SineOscillator(this.sampleRate), // G4
+            new SineOscillator(this.sampleRate)  // Bb4
         ];
         
         // Initialize chord (Subtle amplitudes for background hum)
-        this.chordOscs[0].set(65.41, 0.1);
-        this.chordOscs[1].set(77.78, 0.08);
-        this.chordOscs[2].set(98.00, 0.06);
-        this.chordOscs[3].set(116.54, 0.05);
+        this.chordOscs[0].set(261.63, 0.1);
+        this.chordOscs[1].set(311.13, 0.08);
+        this.chordOscs[2].set(392.00, 0.06);
+        this.chordOscs[3].set(466.16, 0.05);
 
         // 2. The Target Anomaly
         this.targetOsc = new SineOscillator(this.sampleRate);

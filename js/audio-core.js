@@ -21,8 +21,8 @@ class StochasticAudioController {
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             console.log('[AUDIO_CORE]: Context unlocked state: ', this.ctx.state);
             
-            // Load the worklet module
-            await this.ctx.audioWorklet.addModule('../js/synth-processor.js');
+            // Load the worklet module (cache-busted to ensure hot-reloads apply)
+            await this.ctx.audioWorklet.addModule(`../js/synth-processor.js?v=${Date.now()}`);
             
             this.synthNode = new AudioWorkletNode(this.ctx, 'stochastic-synth-v1');
             
