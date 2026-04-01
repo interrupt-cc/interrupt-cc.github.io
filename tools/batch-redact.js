@@ -12,7 +12,8 @@ async function processTemplate() {
 
     if (!templatePath || !outputPath || !password) {
         console.error('\n[SIGNAL_ERROR]: Missing arguments');
-        console.log('Usage: node tools/batch-redact.js manifest/cv-template.html manifest/cv.html my-password\n');
+        console.log('Usage: node tools/batch-redact.js manifest/cv-template.html manifest/cv.html 40-120');
+        console.log('NOTE: The STOCHASTIC_OVERRIDE password must be formatted as "Amp-Phase" (e.g., "40-120")\n');
         process.exit(1);
     }
 

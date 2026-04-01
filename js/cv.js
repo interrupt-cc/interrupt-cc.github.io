@@ -6,29 +6,97 @@
 const DecryptManager = {
   init: () => {
     const btn = document.getElementById('decrypt-btn');
-    if (!btn) return;
+    const container = document.getElementById('oscilloscope-container');
+    const canvas = document.getElementById('osc-canvas');
+    if (!btn || !container || !canvas) return;
 
-    btn.addEventListener('click', async () => {
-      const password = prompt('[INPUT_SIGNAL_KEY_REQUIRED]:');
-      if (!password) return;
-
-      try {
-        await DecryptManager.revealAll(password);
-        btn.innerText = 'SIGNAL_DECRYPTED';
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-        btn.style.cursor = 'default';
-        
-        // Final visual burst for the hardware-link aesthetic
-        if (window.CRT_BURST) window.CRT_BURST();
-        if (window.CRT_ABERRATION) window.CRT_ABERRATION();
-        
-      } catch (err) {
-        console.error('[DECRYPT_ERROR]: ', err.message);
-        alert('[SIGNAL_ERROR]: INVALID_KEY_DETECTED');
-        if (window.CRT_ABERRATION) window.CRT_ABERRATION();
-      }
+    btn.addEventListener('click', () => {
+      container.style.display = 'flex';
+      DecryptManager.startOscilloscope(canvas, container, btn);
     });
+  },
+
+  startOscilloscope: (canvas, container, btn) => {
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width;
+    let height = canvas.height;
+    
+    // Hardware resonance targets (HARDCODED FOR PROOF OF CONCEPT)
+    // Build your CV using password: "40-120"
+    const targetAmp = 40; 
+    const targetPhase = 120;
+    
+    let userAmp = 10;
+    let userPhase = 0;
+    let isDragging = false;
+    let animationId;
+
+    const draw = () => {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // trails
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw Target (Red Anomaly)
+        ctx.beginPath();
+        for(let x = 0; x < width; x++) {
+            let y = height/2 + Math.sin(x * 0.05 + targetPhase * 0.1) * targetAmp;
+            ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Draw User (Cyan Sync)
+        ctx.beginPath();
+        for(let x = 0; x < width; x++) {
+            let y = height/2 + Math.sin(x * 0.05 + userPhase * 0.1) * userAmp;
+            ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        animationId = requestAnimationFrame(draw);
+    };
+
+    const updateFromMouse = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        // Map X to Phase (0-200), Y to Amp (0-100)
+        userPhase = Math.floor((x / rect.width) * 200);
+        userAmp = Math.floor(Math.abs(y - rect.height/2) * (100 / (rect.height/2)));
+    };
+
+    canvas.onmousedown = (e) => { isDragging = true; updateFromMouse(e); };
+    canvas.onmousemove = (e) => { if(isDragging) updateFromMouse(e); };
+    
+    canvas.onmouseup = async () => {
+        isDragging = false;
+        const attempt = `${Math.floor(userAmp)}-${Math.floor(userPhase)}`;
+        
+        try {
+            await DecryptManager.revealAll(attempt);
+            cancelAnimationFrame(animationId);
+            container.style.display = 'none';
+            btn.innerText = 'SIGNAL_DECRYPTED';
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'default';
+            if (window.CRT_BURST) window.CRT_BURST();
+        } catch (err) {
+            // Wrong key! The signals didn't match perfectly.
+            document.getElementById('osc-status').innerText = 'ERROR: CARRIER WAVE REJECTED';
+            document.getElementById('osc-status').style.color = '#ff0000';
+            setTimeout(() => {
+                document.getElementById('osc-status').innerText = 'STATUS: DE-SYNCED';
+                document.getElementById('osc-status').style.color = 'var(--text-color)';
+            }, 1000);
+            if (window.CRT_ABERRATION) window.CRT_ABERRATION();
+            userAmp = 10; userPhase = 0; // Reset
+        }
+    };
+    
+    draw();
   },
 
   revealAll: async (password) => {
