@@ -87,8 +87,8 @@ body::before {
   backdrop-filter: blur(4px);
   position: relative;
   z-index: 1;
-  /* Sync movement with background glitches */
-  transform: translateX(calc(var(--crt-glitch, 0) * 8px));
+  /* Sync movement with background glitches - Upped for more effect */
+  transform: translateX(calc(var(--crt-glitch, 0) * 80px));
   /* Smoothing the jitter just slightly so it feels like physical mass */
   transition: transform 0.05s linear;
 }
@@ -108,7 +108,7 @@ body::before {
   /* Only the bottom 1/8 slice */
   clip-path: polygon(0 87.5%, 100% 87.5%, 100% 100%, 0 100%);
   /* Shift it even more than the main frame for the "tear" feel */
-  transform: translateX(calc(var(--crt-glitch, 0) * 15px));
+  transform: translateX(calc(var(--crt-glitch, 0) * 150px));
   z-index: -1;
   pointer-events: none;
 }
@@ -216,8 +216,8 @@ h1 {
   border: 1px solid var(--dim-color);
   box-shadow: var(--glow-shadow);
   overflow: hidden;
-  /* Global jitter sync */
-  transform: translateX(calc(var(--crt-glitch, 0) * 8px));
+  /* Global jitter sync - Upped for more effect */
+  transform: translateX(calc(var(--crt-glitch, 0) * 80px));
   transition: transform 0.05s linear;
 }
 
