@@ -120,10 +120,33 @@ const DecryptManager = {
     
     const handleInteractionEnd = async () => {
         isDragging = false;
-        const attempt = `${Math.floor(userAmp)}-${Math.floor(userFreq)}`;
         
-        try {
-            await DecryptManager.revealAll(attempt);
+        // --- MOBILE FORGIVENESS HACK (FUZZY DECRYPTION) ---
+        // AES-GCM requires an exact string match (e.g. "40-240"). 
+        // Small touch screens make pixel-perfect alignment difficult.
+        // We brute-force a radius around the user's drop point.
+        const rAmp = window.innerWidth < 600 ? 5 : 2;  // +/- 5 amplitude on mobile
+        const rFreq = window.innerWidth < 600 ? 10 : 3; // +/- 10 Hz on mobile
+        
+        let success = false;
+        let uA = Math.floor(userAmp);
+        let uF = Math.floor(userFreq);
+
+        for (let a = uA - rAmp; a <= uA + rAmp; a++) {
+            for (let f = uF - rFreq; f <= uF + rFreq; f++) {
+                const attempt = `${a}-${f}`;
+                try {
+                    await DecryptManager.revealAll(attempt);
+                    success = true;
+                    break;
+                } catch(e) { 
+                    // Expected OperationError for wrong keys, continue brute force
+                }
+            }
+            if (success) break;
+        }
+        
+        if (success) {
             cancelAnimationFrame(animationId);
             container.style.display = 'none';
             btn.innerText = 'SIGNAL_DECRYPTED';
@@ -132,8 +155,8 @@ const DecryptManager = {
             btn.style.cursor = 'default';
             if (window.CRT_BURST) window.CRT_BURST();
             if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.shutdownAnomaly();
-        } catch (err) {
-            // Wrong key! The signals didn't match perfectly.
+        } else {
+            // Wrong key radius! The signals didn't match closely enough.
             document.getElementById('osc-status').innerText = 'ERROR: CARRIER WAVE REJECTED';
             document.getElementById('osc-status').style.color = '#ff0000';
             setTimeout(() => {
