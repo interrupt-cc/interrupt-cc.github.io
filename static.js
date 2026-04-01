@@ -125,6 +125,7 @@ const positions = [
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
 let saturation = 0;
+let isBuilding = false;
 let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
@@ -139,13 +140,27 @@ function render(time) {
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    // Random Bursts Logic (1/2 as often)
-    if (time - lastBurstTime > 10.0 + Math.random() * 20.0) {
-        saturation = 1.0;
-        lastBurstTime = time;
+    // "Burning Out Circuit" Logic
+    const nextBurstThreshold = 15.0 + (lastBurstTime % 20); // semi-random interval
+    
+    if (!isBuilding && time - lastBurstTime > nextBurstThreshold) {
+        isBuilding = true;
     }
-    if (saturation > 0) {
-        saturation *= 0.98; // 4x slower fade (was 0.92)
+
+    if (isBuilding) {
+        // Capacitor charging: jittery, non-linear build
+        saturation += (0.001 + Math.random() * 0.004);
+        // Add some "stutter" to the build
+        if (Math.random() > 0.9) saturation -= 0.02;
+        
+        if (saturation > 0.35) {
+            saturation = 1.8; // THE SNAP: Full brightness surge
+            isBuilding = false;
+            lastBurstTime = time;
+        }
+    } else if (saturation > 0) {
+        // Standard decay
+        saturation *= 0.98;
         if (saturation < 0.005) saturation = 0;
     }
 
