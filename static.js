@@ -167,10 +167,11 @@ function render(time) {
     const config = window.CRT_CONFIG || { pinch: 0.15, freq: 4, snap: 1.8 };
 
     // 1. Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
-    const burstFreq = config.freq || 4.0;
-    const nextBurstThreshold = burstFreq + (Math.random() * burstFreq * 0.5);
+    // We use freq + (freq * 0.5 randomness) for bursts
+    const bInterval = config.freq || 4.0;
+    const bRandomFactor = 0.5; // Hardcoded for now
     
-    if (!isBuilding && saturation === 0 && time - lastBurstTime > nextBurstThreshold) {
+    if (!isBuilding && saturation === 0 && (time - lastBurstTime) > (bInterval + Math.random() * bInterval * bRandomFactor)) {
         burstMode = Math.random() > 0.5 ? 1 : 0;
         
         if (burstMode === 0) {
@@ -184,7 +185,7 @@ function render(time) {
     }
 
     if (isBuilding) {
-        // Capacitor charging logic
+        // Capacitor charging logic: jittery, non-linear build
         saturation += (0.002 + Math.random() * 0.008); 
         if (Math.random() > 0.9) saturation -= 0.04;
         
@@ -200,17 +201,17 @@ function render(time) {
     }
 
     // 2. Periodic Geometry Pinch Spikes
-    const pInterval = config['p-interval'] || 5.0;
+    // We use p-interval + (p-interval * p-random) for spikes
+    const pInterval = config['p-interval'] || 4.0;
     const pRandom = config['p-random'] || 0.5;
 
-    if (time > nextPinchTime) {
+    if (pinchSpike === 0 && (time - lastPinchTime) > (pInterval + Math.random() * pInterval * pRandom)) {
         pinchSpike = 0.4 * (0.5 + Math.random() * pRandom);
-        const scatter = (Math.random() - 0.5) * 2.0 * pRandom;
-        nextPinchTime = time + pInterval * (1.0 + scatter);
+        lastPinchTime = time;
     }
 
     if (pinchSpike > 0) {
-        pinchSpike *= 0.94; // Decay
+        pinchSpike *= 0.94; // Exponential decay
         if (pinchSpike < 0.001) pinchSpike = 0;
     }
 
