@@ -54,11 +54,11 @@
             logger('[SIGNAL_STOCHASTIC_TEST_INIT]: STARTING BROWSER SUITE\n', 'info');
             
             // Subtle feedback during tests
-            if (window.CRT_GLITCH) window.CRT_GLITCH();
+            if (window.CRT_ABERRATION) window.CRT_ABERRATION();
             
             await STOCHASTIC_TEST_SUITE.runTests(STOCHASTIC_ENCRYPT, (msg, type) => {
                 logger(msg, type);
-                if (type === 'error' && window.CRT_GLITCH) window.CRT_GLITCH();
+                if (type === 'error' && window.CRT_ABERRATION) window.CRT_ABERRATION();
             });
 
             logger('\n[SIGNAL_STOCHASTIC_TEST_COMPLETE]', 'info');

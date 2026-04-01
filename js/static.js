@@ -1,6 +1,6 @@
 /**
  * static.js - CRT Static Background Effect
- * High-performance WebGL noise with glitches and bursts.
+ * High-performance WebGL noise with aberrations and bursts.
  */
 
 const canvas = document.getElementById('crt-static');
@@ -38,7 +38,7 @@ const fsSource = `
     uniform float u_time;
     uniform vec2 u_resolution;
     uniform float u_saturation;
-    uniform float u_glitch_offset;
+    uniform float u_aberration_offset;
     uniform float u_pinch_factor;
     uniform float u_noise_floor;
     uniform float u_bleed;
@@ -94,10 +94,10 @@ const fsSource = `
         // 4. Secondary small bars (High speed, vertical only)
         float smallRoll = sin(uv.y * 25.0 - u_time * 6.0);
         
-        // Global horizontal glitching
-        if (u_glitch_offset > 0.0) {
+        // Global horizontal aberration
+        if (u_aberration_offset > 0.0) {
             float band = step(0.1, random(vec2(floor(uv.y * 15.0), u_time)));
-            if (band > 0.5) uv.x += u_glitch_offset;
+            if (band > 0.5) uv.x += u_aberration_offset;
         }
 
         // 5. Dynamic Noise and Interference assembly
@@ -174,7 +174,7 @@ const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
 const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
 const timeUniformLocation = gl.getUniformLocation(program, "u_time");
 const saturationUniformLocation = gl.getUniformLocation(program, "u_saturation");
-const glitchUniformLocation = gl.getUniformLocation(program, "u_glitch_offset");
+const aberrationUniformLocation = gl.getUniformLocation(program, "u_aberration_offset");
 const pinchUniformLocation = gl.getUniformLocation(program, "u_pinch_factor");
 const noiseUniformLocation = gl.getUniformLocation(program, "u_noise_floor");
 const bleedUniformLocation = gl.getUniformLocation(program, "u_bleed");
@@ -202,11 +202,11 @@ let isBuilding = false;
 let burstMode = 0; // 0: SNAP, 1: BUILD
 let pinchSpike = 0;
 let lastPinchTime = 0; // MISSING WAS PROX_CAUSE OF BREAK
-let glitchOffset = 0;
+let aberrationOffset = 0;
 let tearOffset = 0;
 let tearRand = 0; // New stochastic extra-tear
 let lastBurstTime = 0;
-let lastGlitchTime = 0;
+let lastAberrationTime = 0;
 
 // GHOST (INK CLOUD) STATE MACHINE
 let ghostState = 'IDLE'; // IDLE, BURN, DRIP, FADE
@@ -331,17 +331,17 @@ function render(time) {
         }
     }
 
-    // 3. Random Glitch Logic
-    if (time - lastGlitchTime > 2.0 + Math.random() * 5.0) {
-        glitchOffset = (Math.random() - 0.5) * 0.2;
-        lastGlitchTime = time;
-        // Sync the mechanical tear to the start of the glitch
-        tearOffset = glitchOffset;
+    // 3. Random Aberration Logic
+    if (time - lastAberrationTime > 2.0 + Math.random() * 5.0) {
+        aberrationOffset = (Math.random() - 0.5) * 0.2;
+        lastAberrationTime = time;
+        // Sync the mechanical tear to the start of the aberration
+        tearOffset = aberrationOffset;
         // Sign-aware stochastic "extra tear" magnitude (up to 15px)
         tearRand = (tearOffset >= 0 ? 1.0 : -1.0) * Math.random() * 15.0;
     } else {
-        glitchOffset *= 0.5; 
-        if (Math.abs(glitchOffset) < 0.001) glitchOffset = 0;
+        aberrationOffset *= 0.5; 
+        if (Math.abs(aberrationOffset) < 0.001) aberrationOffset = 0;
         
         // Mechanical tear lingers much longer (slow decay 0.99)
         tearOffset *= 0.992;
@@ -352,7 +352,7 @@ function render(time) {
     }
 
     // Publish values for layout tearing
-    document.documentElement.style.setProperty('--crt-glitch', glitchOffset);
+    document.documentElement.style.setProperty('--crt-aberration', aberrationOffset);
     document.documentElement.style.setProperty('--crt-tear', tearOffset);
     document.documentElement.style.setProperty('--crt-tear-rand', tearRand);
 
@@ -364,7 +364,7 @@ function render(time) {
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
     gl.uniform1f(timeUniformLocation, time);
     gl.uniform1f(saturationUniformLocation, saturation);
-    gl.uniform1f(glitchUniformLocation, glitchOffset);
+    gl.uniform1f(aberrationUniformLocation, aberrationOffset);
     gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
     gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
     gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
@@ -385,4 +385,4 @@ requestAnimationFrame(render);
 
 // Hardware Hooks for external plugins (like chat.js)
 window.CRT_BURST = () => { saturation = 1.2; };
-window.CRT_GLITCH = () => { glitchOffset = (Math.random() - 0.5) * 0.3; };
+window.CRT_ABERRATION = () => { aberrationOffset = (Math.random() - 0.5) * 0.3; };

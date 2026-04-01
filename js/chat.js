@@ -40,7 +40,7 @@ function spawnSignal(text) {
     document.body.appendChild(div);
     
     // HARDWARE_FEEDBACK: Spike CRT on incoming signal
-    if (window.CRT_GLITCH) window.CRT_GLITCH();
+    if (window.CRT_ABERRATION) window.CRT_ABERRATION();
     if (window.CRT_BURST && Math.random() > 0.7) window.CRT_BURST();
     
     // Lifecycle cleanup
@@ -61,7 +61,7 @@ signalInput.addEventListener('keydown', (e) => {
             });
             signalInput.value = '';
             // Visual confirmation for self
-            if (window.CRT_GLITCH) window.CRT_GLITCH();
+            if (window.CRT_ABERRATION) window.CRT_ABERRATION();
         }
     }
 });

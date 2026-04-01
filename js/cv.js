@@ -1,6 +1,6 @@
 /**
  * cv.js - Signal Decryption Logic for the CV_MANIFEST
- * Handles the 'Glitch Reveal' and decryption of PII blobs.
+ * Handles the 'Aberration Reveal' and decryption of PII blobs.
  */
 
 const DecryptManager = {
@@ -21,12 +21,12 @@ const DecryptManager = {
         
         // Final visual burst for the hardware-link aesthetic
         if (window.CRT_BURST) window.CRT_BURST();
-        if (window.CRT_GLITCH) window.CRT_GLITCH();
+        if (window.CRT_ABERRATION) window.CRT_ABERRATION();
         
       } catch (err) {
         console.error('[DECRYPT_ERROR]: ', err.message);
         alert('[SIGNAL_ERROR]: INVALID_KEY_DETECTED');
-        if (window.CRT_GLITCH) window.CRT_GLITCH();
+        if (window.CRT_ABERRATION) window.CRT_ABERRATION();
       }
     });
   },
@@ -41,7 +41,7 @@ const DecryptManager = {
 
       try {
         const decodedText = await STOCHASTIC_ENCRYPT.decrypt(blob, password);
-        DecryptManager.glitchTransition(el, decodedText);
+        DecryptManager.aberrationTransition(el, decodedText);
       } catch (e) {
         // Silent fail for individual elements to allow global catch
         throw e;
@@ -49,7 +49,7 @@ const DecryptManager = {
     }
   },
 
-  glitchTransition: (el, finalOutput) => {
+  aberrationTransition: (el, finalOutput) => {
     // Reveal text with a "scrambling" delay for aesthetic impact
     let iterations = 0;
     const originalText = el.innerText;

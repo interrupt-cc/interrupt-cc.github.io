@@ -74,12 +74,12 @@ body::before {
   max-width: 800px;
   margin: 2rem auto;
   /* Top 75% is solid, bottom 25% fades for background bleed */
-  /* Reactive transparency: content container clears out during glitch spikes */
+  /* Reactive transparency: content container clears out during aberration spikes */
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, calc(1.0 - var(--crt-glitch, 0) * 5.0)) 0%,
-    rgba(0, 0, 0, calc(1.0 - var(--crt-glitch, 0) * 5.0)) 75%,
-    rgba(0, 0, 0, calc(0.15 - var(--crt-glitch, 0) * 1.5)) 100%
+    rgba(0, 0, 0, calc(1.0 - var(--crt-aberration, 0) * 5.0)) 0%,
+    rgba(0, 0, 0, calc(1.0 - var(--crt-aberration, 0) * 5.0)) 75%,
+    rgba(0, 0, 0, calc(0.15 - var(--crt-aberration, 0) * 1.5)) 100%
   );
   border: 1px solid var(--dim-color);
   box-shadow: var(--glow-shadow);
@@ -87,8 +87,8 @@ body::before {
   backdrop-filter: blur(4px);
   position: relative;
   z-index: 1;
-  /* Sync movement with background glitches - Upped for more effect */
-  transform: translateX(calc(var(--crt-glitch, 0) * 80px));
+  /* Sync movement with background aberrations - Upped for more effect */
+  transform: translateX(calc(var(--crt-aberration, 0) * 80px));
   /* Smoothing the jitter just slightly so it feels like physical mass */
   transition: transform 0.05s linear;
 }
@@ -229,18 +229,18 @@ h1 {
   height: 85%;
   display: flex;
   flex-direction: column;
-  /* Reactive transparency: only flashes clear for an instant during glitch spikes for readability */
+  /* Reactive transparency: only flashes clear for an instant during aberration spikes for readability */
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, calc(1.0 - var(--crt-glitch, 0) * 5.0)) 0%,
-    rgba(0, 0, 0, calc(1.0 - var(--crt-glitch, 0) * 5.0)) 75%,
-    rgba(0, 0, 0, calc(0.15 - var(--crt-glitch, 0) * 1.0)) 100%
+    rgba(0, 0, 0, calc(1.0 - var(--crt-aberration, 0) * 5.0)) 0%,
+    rgba(0, 0, 0, calc(1.0 - var(--crt-aberration, 0) * 5.0)) 75%,
+    rgba(0, 0, 0, calc(0.15 - var(--crt-aberration, 0) * 1.0)) 100%
   );
   border: 1px solid var(--dim-color);
   box-shadow: var(--glow-shadow);
   overflow: hidden;
   /* Global jitter sync - Upped for more effect */
-  transform: translateX(calc(var(--crt-glitch, 0) * 80px));
+  transform: translateX(calc(var(--crt-aberration, 0) * 80px));
   transition: transform 0.05s linear;
 }
 
