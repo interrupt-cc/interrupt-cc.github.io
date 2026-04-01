@@ -6,23 +6,16 @@
     <title>0x1 // 4k pages of pain</title>
     <link rel="stylesheet" href="../style.css">
     <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
         .post-content {
             max-width: 800px;
-            margin: 2rem auto;
-            border: 1px solid var(--dim-color);
-            padding: 2rem;
-            background: rgba(0, 0, 0, 0.5);
-            box-shadow: var(--glow-shadow);
+            margin: 0 auto;
         }
         .back-link {
-            display: inline-block;
-            margin-bottom: 2rem;
-            color: var(--accent-color);
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .back-link:before {
-            content: "<-- ";
+            display: none; /* Hidden inside the iframe */
         }
         h2 {
             color: var(--accent-color);
@@ -45,8 +38,6 @@
 </head>
 <body>
     <main>
-        <a href="../index.html" class="back-link">RETURN_TO_ROOT</a>
-        
         <article class="post-content">
             <header>
                 <h2>0x1: 4k pages of pain</h2>

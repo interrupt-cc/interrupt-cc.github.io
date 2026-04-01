@@ -11,31 +11,62 @@
 
 <body>
     <canvas id="crt-static"></canvas>
-    <header>
-        <h1>INTERRUPT.CC</h1>
-        <div class="intro">
-            <p>Infinite as the result of division by zero.</p>
-            <p>This interface defines Eternal as a single fixed time...</p>
+    <div class="gutter">
+        <header>
+            <div class="intro">
+                <p>Infinite as the result of division by zero.</p>
+                <p>This interface defines Eternal as a single fixed time...</p>
+            </div>
+            <h1>INTERRUPT</h1>
+        </header>
+
+        <main>
+            <section class="feed">
+                <ul class="post-list">
+                    <li class="post-item">
+                        <span class="post-id">0x0</span>
+                        <a href="posts/4k_pages_of_pain.html" class="post-link">4k pages of pain</a>
+                        <span class="post-date">2026-03-31</span>
+                    </li>
+                </ul>
+            </section>
+        </main>
+
+        <footer>
+            <p>[ ACCESS_LOG: SUCCESS ]</p>
+        </footer>
+    </div>
+
+    <div id="post-overlay">
+        <div class="overlay-controls">
+            <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
         </div>
-    </header>
-
-    <main>
-        <section class="feed">
-            <ul class="post-list">
-                <li class="post-item">
-                    <span class="post-id">0x0</span>
-                    <a href="posts/4k_pages_of_pain.html" class="post-link">4k pages of pain</a>
-                    <span class="post-date">2026-03-31</span>
-                </li>
-            </ul>
-        </section>
-    </main>
-
-    <footer>
-        <p>[ ACCESS_LOG: SUCCESS ]</p>
-    </footer>
+        <iframe id="post-frame" src=""></iframe>
+    </div>
 
     <script src="static.js"></script>
+    <script>
+        document.querySelectorAll('.post-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const url = link.getAttribute('href');
+                if (!url) return;
+                e.preventDefault();
+                const overlay = document.getElementById('post-overlay');
+                const frame = document.getElementById('post-frame');
+                frame.src = url;
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+        });
+
+        document.getElementById('close-overlay').addEventListener('click', () => {
+            const overlay = document.getElementById('post-overlay');
+            const frame = document.getElementById('post-frame');
+            overlay.classList.remove('active');
+            frame.src = '';
+            document.body.style.overflow = '';
+        });
+    </script>
 </body>
 
 </html>
