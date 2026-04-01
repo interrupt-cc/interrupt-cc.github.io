@@ -124,13 +124,24 @@ const fsSource = `
         
         if (ghostMask > 0.0) {
             vec2 pUv = floor(uv * 60.0) / 60.0; // Chunky pixels for the bleed
-            vec3 rainbow = vec3(
-                random(pUv + 77.0),
-                random(pUv + 88.0),
-                random(pUv + 99.0)
-            );
-            // Blend the rainbow in
-            color = mix(color, rainbow, ghostMask * u_bleed);
+            
+            // Generate a seed to pick from CMYK primaries
+            float hueSeed = random(pUv + 77.0);
+            vec3 cmyk;
+            if (hueSeed < 0.33) {
+                cmyk = vec3(0.0, 1.0, 1.0); // CYAN
+            } else if (hueSeed < 0.66) {
+                cmyk = vec3(1.0, 0.0, 1.0); // MAGENTA
+            } else {
+                cmyk = vec3(1.0, 1.0, 0.0); // YELLOW
+            }
+            
+            // "K" (Black) component: randomly darkening the CMY values
+            float k = random(pUv + 99.0);
+            cmyk *= (1.0 - k * 0.4); 
+            
+            // Blend the CMYK ghost into the grayscale phosphor
+            color = mix(color, cmyk, ghostMask * u_bleed);
         }
 
         // Saturation burst and standard scanlines
