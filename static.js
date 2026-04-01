@@ -60,13 +60,15 @@ const fsSource = `
         // Combining spatial and temporal randomness for "boiling" static
         float n = random(uv + fract(u_time * 0.77));
         
-        // Occasional horizontal or diagonal "rolling" interference bands
-        // We pulse the angle slightly over time
-        float angleState = step(0.7, random(vec2(floor(u_time * 0.2), 3.0)));
-        float rollAngle = angleState * 0.8; // 0 or ~45 degrees
-        float roll = sin((uv.y + uv.x * rollAngle) * 5.0 + u_time * 2.0);
-        if (roll > 0.9) {
-           n += 0.15;
+        // Rolling interference bands (Vertical + Diagonal)
+        float rollAngle = 0.8; // 45 degrees
+        float rollV = sin(uv.y * 5.0 + u_time * 1.5);
+        float rollD = sin((uv.y + uv.x * rollAngle) * 5.0 + u_time * 2.0);
+        
+        // Occasional "sync break" intensity
+        float syncBreak = step(0.6, random(vec2(floor(u_time * 0.5), 1.0)));
+        if (rollV > 0.95 || (syncBreak > 0.5 && rollD > 0.98)) {
+           n += 0.12;
         }
 
         // Saturation burst logic
@@ -125,14 +127,14 @@ function render(time) {
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    // Random Bursts Logic
-    if (time - lastBurstTime > 5.0 + Math.random() * 10.0) {
+    // Random Bursts Logic (1/2 as often)
+    if (time - lastBurstTime > 10.0 + Math.random() * 20.0) {
         saturation = 1.0;
         lastBurstTime = time;
     }
     if (saturation > 0) {
-        saturation *= 0.92; // Quick fade
-        if (saturation < 0.01) saturation = 0;
+        saturation *= 0.98; // 4x slower fade (was 0.92)
+        if (saturation < 0.005) saturation = 0;
     }
 
     // Random Glitch Logic
