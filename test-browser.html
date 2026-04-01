@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SIGNAL_STOCHASTIC_TEST // INTERRUPT.CC</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid var(--dim-color);
+            box-shadow: var(--glow-shadow);
+            font-family: var(--font-family);
+            position: relative;
+            z-index: 10;
+        }
+        .test-log {
+            font-family: monospace;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            color: var(--text-color);
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; text-decoration: underline; }
+        .info { color: var(--accent-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="test-container gutter">
+        <h1>SIGNAL_STOCHASTIC_TEST</h1>
+        <div id="log" class="test-log">Initializing Test Suite...</div>
+    </div>
+
+    <canvas id="crt-static"></canvas>
+    <canvas id="crt-lines"></canvas>
+    
+    <script src="static.js"></script>
+    <script src="lines.js"></script>
+    <script src="crypt-lib.js"></script>
+    <script src="test-core.js"></script>
+    <script>
+        const logEl = document.getElementById('log');
+        function logger(msg, type) {
+            const div = document.createElement('div');
+            div.className = type || '';
+            div.textContent = msg;
+            logEl.appendChild(div);
+        }
+
+        async function run() {
+            logEl.textContent = '';
+            logger('[SIGNAL_STOCHASTIC_TEST_INIT]: STARTING BROWSER SUITE\n', 'info');
+            
+            // Subtle feedback during tests
+            if (window.CRT_GLITCH) window.CRT_GLITCH();
+            
+            await STOCHASTIC_TEST_SUITE.runTests(STOCHASTIC_ENCRYPT, (msg, type) => {
+                logger(msg, type);
+                if (type === 'error' && window.CRT_GLITCH) window.CRT_GLITCH();
+            });
+
+            logger('\n[SIGNAL_STOCHASTIC_TEST_COMPLETE]', 'info');
+            if (window.CRT_BURST) window.CRT_BURST();
+        }
+
+        document.addEventListener('DOMContentLoaded', run);
+    </script>
+</body>
+</html>
