@@ -59,6 +59,27 @@ body::before {
   pointer-events: none;
 }
 
+/* Sub-pixel Vertical Red Grid (Aperture Grill) */
+body::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  /* Very thin red vertical lines */
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 40px,
+    rgba(255, 40, 0, 0.15) 40px,
+    rgba(255, 40, 0, 0.15) 41px
+  );
+  z-index: 2000; /* On top of everything */
+  pointer-events: none;
+}
+
 .gutter {
   max-width: 800px;
   margin: 2rem auto;
