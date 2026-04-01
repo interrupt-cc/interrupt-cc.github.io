@@ -105,37 +105,40 @@ const fsSource = `
         if (rollVal > 0.95) n += primaryBrightness;
         if (smallRoll > 0.99) n += secondaryBrightness;
 
+        // --- CONVERT TO RGB HERE ---
+        vec3 color = vec3(n);
+
         // 6. Chromatic Ghosting (Moving Rainbow Patches)
         // High-contrast, drifting color-subcarrier bleed patches
-        float ghostFreq = 2.0 + u_trails * 8.0;
-        vec2 ghostUv = uv * ghostFreq;
-        float ghostT = u_time * 0.4;
+        // Making it sparse: only one "bubble" area typically active
+        float ghostFreq = 1.0 + u_trails * 4.0;
+        float ghostT = u_time * 0.3;
         
-        // Layered sines for organic 'bubble' movement
-        float bubble = sin(ghostUv.x + ghostT) * cos(ghostUv.y + ghostT * 1.2);
-        bubble += sin(ghostUv.x * 0.8 - ghostT * 0.7) * cos(ghostUv.y * 1.5 + ghostT);
+        // Use a single low-freq sine product for a sparse 'wandering' patch
+        float bubble = sin(uv.x * ghostFreq + ghostT) * cos(uv.y * (ghostFreq * 1.1) - ghostT);
+        // Add a long-period pulse so it's not always on screen
+        bubble *= sin(u_time * 0.5) * 0.5 + 0.5;
         
-        float ghostThreshold = 0.5;
-        float ghostMask = smoothstep(ghostThreshold, ghostThreshold + 0.5, bubble);
+        float ghostThreshold = 0.65;
+        float ghostMask = smoothstep(ghostThreshold, ghostThreshold + 0.2, bubble);
         
-        if (ghostMask > 0.01) {
-            vec2 pUv = floor(uv * 80.0) / 80.0; // Chunky pixels for the bleed
+        if (ghostMask > 0.0) {
+            vec2 pUv = floor(uv * 60.0) / 60.0; // Chunky pixels for the bleed
             vec3 rainbow = vec3(
-                random(pUv + floor(u_time * 5.0) * 0.01),
-                random(pUv + floor(u_time * 5.0) * 0.01 + 1.0),
-                random(pUv + floor(u_time * 5.0) * 0.01 + 2.0)
+                random(pUv + 77.0),
+                random(pUv + 88.0),
+                random(pUv + 99.0)
             );
-            n += (rainbow.r * 0.5) * ghostMask * u_bleed;
-            // Shift the final color towards the rainbow
-            n = mix(n, n + (rainbow.g - 0.5) * u_bleed, ghostMask * 0.5);
+            // Blend the rainbow in
+            color = mix(color, rainbow, ghostMask * u_bleed);
         }
 
         // Saturation burst and standard scanlines
-        float finalColor = n + u_saturation;
+        vec3 finalColor = color + vec3(u_saturation);
         float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.06;
-        finalColor -= scanline;
+        finalColor -= vec3(scanline);
 
-        gl_FragColor = vec4(vec3(finalColor), 1.0);
+        gl_FragColor = vec4(finalColor, 1.0);
     }
 `;
 
