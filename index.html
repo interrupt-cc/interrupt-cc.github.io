@@ -54,8 +54,14 @@
     </div>
 
     <canvas id="crt-lines"></canvas>
+    <div id="signal-input-container">
+        <span class="signal-prompt">[SIGNAL_OUT]: >></span>
+        <input type="text" id="signal-broadcast" placeholder="..." autocomplete="off">
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <script src="static.js"></script>
     <script src="lines.js"></script>
+    <script src="chat.js"></script>
     <script>
         // Global CRT Configuration
         window.CRT_CONFIG = {

@@ -382,3 +382,7 @@ function render(time) {
 }
 
 requestAnimationFrame(render);
+
+// Hardware Hooks for external plugins (like chat.js)
+window.CRT_BURST = () => { saturation = 1.2; };
+window.CRT_GLITCH = () => { glitchOffset = (Math.random() - 0.5) * 0.3; };

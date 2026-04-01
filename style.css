@@ -317,6 +317,60 @@ body {
   animation: flicker 0.1s infinite alternate;
 }
 
+/* --- STOCHASTIC_DECRYPT (Chat) Styles --- */
+#signal-input-container {
+  position: fixed;
+  bottom: 0px;
+  left: 0;
+  width: 100vw;
+  background: rgba(0, 0, 0, 0.9);
+  border-top: 1px solid var(--dim-color);
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  align-items: center;
+  z-index: 12000;
+  backdrop-filter: blur(8px);
+}
+
+.signal-prompt {
+  color: var(--text-color);
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  margin-right: 1rem;
+  text-shadow: var(--glow-shadow);
+  white-space: nowrap;
+}
+
+#signal-broadcast {
+  background: transparent;
+  border: none;
+  color: var(--accent-color);
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  width: 100%;
+  outline: none;
+  letter-spacing: 1px;
+}
+
+.falling-signal {
+  position: fixed;
+  z-index: 500; /* Behind content boxes, above CRT noise */
+  font-family: var(--font-family);
+  color: var(--text-color);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: var(--glow-shadow);
+  animation: fall-and-fade 10s linear forwards;
+}
+
+@keyframes fall-and-fade {
+  0% { transform: translateY(-5vh); opacity: 0; }
+  5% { opacity: 0.8; }
+  85% { opacity: 0.8; }
+  100% { transform: translateY(105vh); opacity: 0; }
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
