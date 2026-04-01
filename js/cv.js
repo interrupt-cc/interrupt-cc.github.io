@@ -92,8 +92,11 @@ const DecryptManager = {
 
     const updateFromMouse = (e) => {
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         // Map X to Frequency (50-450Hz), Y to Amp (0-100)
         userFreq = Math.floor(50 + (x / rect.width) * 400);
         userAmp = Math.floor(Math.abs(y - rect.height/2) * (100 / (rect.height/2)));
@@ -107,7 +110,15 @@ const DecryptManager = {
     canvas.onmousedown = (e) => { isDragging = true; updateFromMouse(e); };
     canvas.onmousemove = (e) => { if(isDragging) updateFromMouse(e); };
     
-    canvas.onmouseup = async () => {
+    canvas.ontouchstart = (e) => { isDragging = true; updateFromMouse(e); };
+    canvas.ontouchmove = (e) => { 
+        if(isDragging) {
+            e.preventDefault(); // Prevent vertical scrolling while hacking the signal
+            updateFromMouse(e); 
+        }
+    };
+    
+    const handleInteractionEnd = async () => {
         isDragging = false;
         const attempt = `${Math.floor(userAmp)}-${Math.floor(userFreq)}`;
         
@@ -134,6 +145,9 @@ const DecryptManager = {
             if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.updateUserSync(480, 0);
         }
     };
+
+    canvas.onmouseup = handleInteractionEnd;
+    canvas.ontouchend = handleInteractionEnd;
     
     draw();
   },
