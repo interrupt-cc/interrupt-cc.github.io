@@ -128,11 +128,13 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: inherit;
+  /* Replace solid background inheritance with translucent signal refraction */
+  background: rgba(0, 229, 255, 0.05);
+  backdrop-filter: blur(3px) contrast(1.5) hue-rotate(15deg);
   /* Only the bottom 1/8 slice of the CONTENT area */
   clip-path: polygon(0 87.5%, 100% 87.5%, 100% 100%, 0 100%);
   transform: translateX(calc(var(--crt-tear, 0) * 80px + var(--crt-tear-rand, 0) * 0.5 * 1px));
-  z-index: 10; /* Above the content */
+  z-index: 10; /* Above the content, but transparent */
   pointer-events: none;
 }
 
