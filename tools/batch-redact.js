@@ -12,7 +12,7 @@ async function processTemplate() {
 
     if (!templatePath || !outputPath || !password) {
         console.error('\n[SIGNAL_ERROR]: Missing arguments');
-        console.log('Usage: node batch-redact.js cv-template.html cv.html my-password\n');
+        console.log('Usage: node tools/batch-redact.js manifest/cv-template.html manifest/cv.html my-password\n');
         process.exit(1);
     }
 

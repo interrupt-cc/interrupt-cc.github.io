@@ -28,18 +28,18 @@ A zero-dependency, isomorphic PII redaction system built on native **SubtleCrypt
 
 ### Developer Tools:
 - **CLI Encryptor**: `node tools/crypt-cli.js encrypt "[DATA]" "[PASS]"`
-- **Batch Redactor**: `node tools/batch-redact.js cv-template.html cv.html [PASS]` (Automated build process).
+- **Batch Redactor**: `node tools/batch-redact.js manifest/cv-template.html manifest/cv.html [PASS]` (Automated build process).
 - **Verification Suite**: `node tests/test-cli.js` or `tests/test-browser.html` (Isomorphic testing).
 
 ## 04: BUILD_MANIFEST
 This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NPM libraries are used for security or core logic.
 
 ```
-/
 ├── index.html
-├── cv.html          <-- Generated Manifest
-├── cv-template.html <-- Redaction Template
 ├── README.md
+├── manifest/
+│   ├── cv.html          <-- Generated Manifest
+│   └── cv-template.html <-- Redaction Template
 ├── css/
 │   └── style.css
 ├── js/
