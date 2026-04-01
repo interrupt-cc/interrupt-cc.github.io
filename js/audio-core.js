@@ -60,8 +60,13 @@ class StochasticSynthProcessor extends AudioWorkletProcessor {
             chordSample *= this.chordAmpScaler;
             const targetSample = this.targetOsc.process();
             const userSample = this.userOsc.process();
-            let master = chordSample + targetSample + userSample;
-            master = Math.max(-1, Math.min(1, master * 1.5 - 0.5 * Math.pow(master, 3)));
+            
+            // Mix master bus and add 30% headroom padding to prevent small-speaker distortion
+            let master = (chordSample + targetSample + userSample) * 0.7;
+            
+            // Strict safety limit without mathematical saturation/drive
+            master = Math.max(-1.0, Math.min(1.0, master));
+            
             for (let channel = 0; channel < channelCount; ++channel) { output[channel][i] = master; }
         }
         return true;

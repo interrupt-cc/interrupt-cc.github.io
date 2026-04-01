@@ -108,7 +108,7 @@ const DecryptManager = {
         isDragging = true; 
         if (window.STOCHASTIC_AUDIO) {
             window.STOCHASTIC_AUDIO.setChordVolume(1.0); // Fade in background chord
-            window.STOCHASTIC_AUDIO.activateTarget(targetFreq, 0.3); // Reveal target frequency
+            window.STOCHASTIC_AUDIO.activateTarget(targetFreq, 0.15); // Reveal target frequency cleanly
         }
         updateFromMouse(e);
     };
