@@ -145,8 +145,7 @@ h1 {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(8, 9, 10, 0.85);
-  backdrop-filter: blur(6px);
+  background: transparent;
   z-index: 10000;
   opacity: 0;
   pointer-events: none;
