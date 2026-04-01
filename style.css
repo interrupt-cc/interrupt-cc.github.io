@@ -73,7 +73,13 @@ body::before {
 .gutter {
   max-width: 800px;
   margin: 2rem auto;
-  background: rgba(0, 0, 0, 0.75);
+  /* Top 75% is solid, bottom 25% fades for background bleed */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.8) 75%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
   border: 1px solid var(--dim-color);
   box-shadow: var(--glow-shadow);
   padding: 2rem;
