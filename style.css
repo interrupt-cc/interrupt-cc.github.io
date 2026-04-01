@@ -224,6 +224,37 @@ h1 {
 }
 
 
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.95; }
+  25% { opacity: 0.98; }
+  30% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
 body {
   animation: flicker 0.1s infinite alternate;
 }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dim-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+  box-shadow: var(--glow-shadow);
+}
+
