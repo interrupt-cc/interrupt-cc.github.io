@@ -75,8 +75,8 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        // Splitting the difference - 0.25 (was 0.08 originally, then 1.0)
-        float n = random(uv + fract(u_time * 0.88)) * 0.25; 
+        // Restoring contrast: mostly dark with high-intensity "crunchy" pixels
+        float n = pow(random(uv + fract(u_time * 0.88)), 3.0) * 0.8; 
         
         // Randomized brightness intensities
         float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
