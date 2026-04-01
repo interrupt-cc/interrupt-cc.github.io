@@ -75,11 +75,12 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        float n = random(uv + fract(u_time * 0.88));
+        // Scale down the base static significantly to make the background darker
+        float n = random(uv + fract(u_time * 0.88)) * 0.08; 
         
         // Randomized brightness intensities
-        float primaryBrightness = 0.12 * random(vec2(floor(u_time * 10.0), 3.0));
-        float secondaryBrightness = 0.06 * random(vec2(floor(u_time * 14.0), 7.0));
+        float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
+        float secondaryBrightness = 0.08 * random(vec2(floor(u_time * 14.0), 7.0));
         
         if (rollVal > 0.95) n += primaryBrightness;
         if (smallRoll > 0.99) n += secondaryBrightness;
