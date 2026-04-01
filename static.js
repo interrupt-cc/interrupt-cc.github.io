@@ -148,7 +148,7 @@ let saturation = 0;
 let isBuilding = false;
 let burstMode = 0; // 0: SNAP, 1: BUILD
 let pinchSpike = 0;
-let nextPinchTime = 0;
+let lastPinchTime = 0; // MISSING WAS PROX_CAUSE OF BREAK
 let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
@@ -167,9 +167,8 @@ function render(time) {
     const config = window.CRT_CONFIG || { pinch: 0.15, freq: 4, snap: 1.8 };
 
     // 1. Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
-    // We use freq + (freq * 0.5 randomness) for bursts
     const bInterval = config.freq || 4.0;
-    const bRandomFactor = 0.5; // Hardcoded for now
+    const bRandomFactor = 0.5; // Jitter intensity
     
     if (!isBuilding && saturation === 0 && (time - lastBurstTime) > (bInterval + Math.random() * bInterval * bRandomFactor)) {
         burstMode = Math.random() > 0.5 ? 1 : 0;
@@ -201,7 +200,6 @@ function render(time) {
     }
 
     // 2. Periodic Geometry Pinch Spikes
-    // We use p-interval + (p-interval * p-random) for spikes
     const pInterval = config['p-interval'] || 4.0;
     const pRandom = config['p-random'] || 0.5;
 
