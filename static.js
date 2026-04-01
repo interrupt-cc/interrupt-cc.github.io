@@ -204,6 +204,7 @@ let pinchSpike = 0;
 let lastPinchTime = 0; // MISSING WAS PROX_CAUSE OF BREAK
 let glitchOffset = 0;
 let tearOffset = 0;
+let tearRand = 0; // New stochastic extra-tear
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
 
@@ -336,18 +337,24 @@ function render(time) {
         lastGlitchTime = time;
         // Sync the mechanical tear to the start of the glitch
         tearOffset = glitchOffset;
+        // Sign-aware stochastic "extra tear" magnitude (up to 15px)
+        tearRand = (tearOffset >= 0 ? 1.0 : -1.0) * Math.random() * 15.0;
     } else {
         glitchOffset *= 0.5; 
         if (Math.abs(glitchOffset) < 0.001) glitchOffset = 0;
         
         // Mechanical tear lingers much longer (slow decay 0.99)
         tearOffset *= 0.992;
-        if (Math.abs(tearOffset) < 0.0001) tearOffset = 0;
+        if (Math.abs(tearOffset) < 0.0001) {
+            tearOffset = 0;
+            tearRand = 0;
+        }
     }
 
     // Publish values for layout tearing
     document.documentElement.style.setProperty('--crt-glitch', glitchOffset);
     document.documentElement.style.setProperty('--crt-tear', tearOffset);
+    document.documentElement.style.setProperty('--crt-tear-rand', tearRand);
 
     gl.useProgram(program);
     gl.enableVertexAttribArray(positionAttributeLocation);
