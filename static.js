@@ -39,13 +39,31 @@ const fsSource = `
     uniform vec2 u_resolution;
     uniform float u_saturation;
     uniform float u_glitch_offset;
+    uniform float u_pinch_factor;
+    uniform float u_noise_floor;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
     }
 
+    // CRT Geometry Warp: Pincushion Distortion (Pinched Sides)
+    vec2 warp(vec2 uv) {
+        vec2 centered = uv - 0.5;
+        // u_saturation acts as a power surge warp
+        float surge = u_saturation * 0.1;
+        
+        // Use the real-time pinch factor from index.html
+        float pinch = u_pinch_factor + surge; 
+        uv.x = centered.x * (1.0 + pinch * centered.y * centered.y) + 0.5;
+        
+        // Subtle barrel on Y for that curved glass feel
+        uv.y = centered.y * (1.0 + 0.05 * centered.x * centered.x) + 0.5;
+        return uv;
+    }
+
     void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        uv = warp(uv); 
         
         // 1. Toggled Scanning Modes (Vertical vs Diagonal)
         // Switches every ~6 seconds using a stepped random
@@ -75,8 +93,8 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        // Restoring contrast: mostly dark with high-intensity "crunchy" pixels
-        float n = pow(random(uv + fract(u_time * 0.88)), 3.0) * 0.8; 
+        // Using the real-time noise floor uniform
+        float n = pow(random(uv + fract(u_time * 0.88)), 3.0) * u_noise_floor * 3.0; 
         
         // Randomized brightness intensities
         float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
@@ -111,6 +129,8 @@ const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution")
 const timeUniformLocation = gl.getUniformLocation(program, "u_time");
 const saturationUniformLocation = gl.getUniformLocation(program, "u_saturation");
 const glitchUniformLocation = gl.getUniformLocation(program, "u_glitch_offset");
+const pinchUniformLocation = gl.getUniformLocation(program, "u_pinch_factor");
+const noiseUniformLocation = gl.getUniformLocation(program, "u_noise_floor");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -126,6 +146,7 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
 let saturation = 0;
 let isBuilding = false;
+let burstMode = 0; // 0: SNAP, 1: BUILD
 let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
@@ -140,26 +161,38 @@ function render(time) {
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    // "Burning Out Circuit" Logic
-    const nextBurstThreshold = 15.0 + (lastBurstTime % 20); // semi-random interval
+    // Use values from CRT_CONFIG if available
+    const config = window.CRT_CONFIG || { freq: 18, snap: 1.8 };
+
+    // Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
+    const nextBurstThreshold = config.freq + (lastBurstTime % 20); // semi-random interval
     
-    if (!isBuilding && time - lastBurstTime > nextBurstThreshold) {
-        isBuilding = true;
+    if (!isBuilding && saturation === 0 && time - lastBurstTime > nextBurstThreshold) {
+        burstMode = Math.random() > 0.5 ? 1 : 0;
+        
+        if (burstMode === 0) {
+            // BEHAVIOR A: Simple Snap Surge
+            saturation = config.snap;
+            lastBurstTime = time;
+        } else {
+            // BEHAVIOR B: Capacitor Build
+            isBuilding = true;
+        }
     }
 
     if (isBuilding) {
-        // Capacitor charging: jittery, non-linear build
+        // Capacitor charging logic
         saturation += (0.001 + Math.random() * 0.004);
         // Add some "stutter" to the build
         if (Math.random() > 0.9) saturation -= 0.02;
         
         if (saturation > 0.35) {
-            saturation = 1.8; // THE SNAP: Full brightness surge
+            saturation = config.snap; // THE SNAP
             isBuilding = false;
             lastBurstTime = time;
         }
     } else if (saturation > 0) {
-        // Standard decay
+        // Standard decay for both modes
         saturation *= 0.98;
         if (saturation < 0.005) saturation = 0;
     }
@@ -182,6 +215,8 @@ function render(time) {
     gl.uniform1f(timeUniformLocation, time);
     gl.uniform1f(saturationUniformLocation, saturation);
     gl.uniform1f(glitchUniformLocation, glitchOffset);
+    gl.uniform1f(pinchUniformLocation, config.pinch || 0.15);
+    gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
