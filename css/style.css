@@ -438,3 +438,11 @@ body {
   box-shadow: var(--glow-shadow);
 }
 
+/* STOCHASTIC_HIGHLIGHT (Syntax Colors) */
+.syn-keyword { color: var(--accent-color); font-weight: bold; }
+.syn-function { color: var(--text-color); }
+.syn-comment { color: var(--dim-color); font-style: italic; opacity: 0.8; }
+.syn-string { color: #f9d71c; } /* Cyber-Yellow */
+.syn-number { color: #00ff88; } /* Bright Green */
+.syn-literal { color: #ff00cc; }
+.syn-type { color: #00e5ff; text-decoration: underline dotted var(--dim-color); }
