@@ -371,6 +371,53 @@ body {
   100% { transform: translateY(105vh); opacity: 0; }
 }
 
+/* --- STOCHASTIC_ENCRYPT (Redaction) Styles --- */
+.redacted {
+  display: inline-block;
+  background: rgba(0, 229, 255, 0.1);
+  color: transparent;
+  position: relative;
+  cursor: help;
+  transition: all 0.3s ease;
+  user-select: none;
+  overflow: hidden;
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
+.redacted::after {
+  content: "██████████";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  opacity: 0.5;
+  animation: redacted-flicker 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes redacted-flicker {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+.redacted.revealed {
+  background: transparent !important;
+  color: var(--accent-color) !important;
+  text-shadow: var(--glow-shadow);
+  cursor: text;
+}
+
+.redacted.revealed::after {
+  display: none !important;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

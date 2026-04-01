@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV_MANIFEST // INTERRUPT.CC</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .cv-container {
+            max-width: 900px;
+            margin: 4rem auto;
+            padding: 3rem;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid var(--dim-color);
+            box-shadow: var(--glow-shadow);
+            position: relative;
+            z-index: 10;
+        }
+
+        .cv-header {
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .cv-section {
+            margin-bottom: 3rem;
+        }
+
+        .cv-section h2 {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .cv-item {
+            margin-bottom: 2rem;
+        }
+
+        .cv-item-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        /* REDACTION UI */
+        .redaction-controls {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--accent-color);
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .redacted {
+            display: inline-block;
+            background: var(--dim-color);
+            color: transparent;
+            position: relative;
+            cursor: help;
+            transition: all 0.3s ease;
+            user-select: none;
+            overflow: hidden;
+            border-radius: 2px;
+            padding: 0 4px;
+        }
+
+        .redacted::after {
+            content: "██████████";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            opacity: 0.5;
+            animation: redacted-flicker 2s infinite;
+        }
+
+        @keyframes redacted-flicker {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        .redacted.revealed {
+            background: transparent;
+            color: var(--accent-color);
+        }
+
+        .redacted.revealed::after {
+            display: none;
+        }
+
+        #decrypt-btn {
+            background: transparent;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-family: var(--font-family);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        #decrypt-btn:hover {
+            background: var(--accent-color);
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="redaction-controls">
+        <button id="decrypt-btn">DECRYPT_SIGS</button>
+    </div>
+
+    <div class="cv-container gutter">
+        <div class="cv-header">
+            <div>
+                <h1>HUMAN_MANIFEST: 
+                    <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">████████</span>
+                </h1>
+                <p>SOFTWARE_ENGINEER // CYBER_STOCHASTICIST</p>
+            </div>
+            <div style="text-align: right; font-size: 0.8rem;">
+                <p>STATUS: [REDACTED]</p>
+                <p>LOC: <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">████████</span></p>
+            </div>
+        </div>
+
+        <section class="cv-section">
+            <h2>01_EXPERIENCE</h2>
+            <div class="cv-item">
+                <div class="cv-item-header">
+                    <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">█████████████</span>
+                    <span>2022 — PRESENT</span>
+                </div>
+                <p>Lead Architectural Synthesis for Decentralized Signal Streams. Managed redacted PII pipelines and high-fidelity CRT implementations.</p>
+            </div>
+            <div class="cv-item">
+                <div class="cv-item-header">
+                    <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">███████████</span>
+                    <span>2019 — 2022</span>
+                </div>
+                <p>Developed low-latency stochastic engines for reclaimed hardware simulation.</p>
+            </div>
+        </section>
+
+        <section class="cv-section">
+            <h2>02_BIO_SIGNAL</h2>
+            <p>Passionate about building zero-dependency, high-integrity systems that survive the post-supply-chain landscape. Specialized in isomorphic cryptography and decentralized real-time sync.</p>
+        </section>
+
+        <section class="cv-section">
+            <h2>03_CONTACT_LINK</h2>
+            <p>EML: <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">██████████████████</span></p>
+            <p>PHN: <span class="redacted" data-blob="SUTT7Yf2o+j+lA6A9pZ0S6pS39iZ7nU8O5rZ/4uY">██████████████</span></p>
+        </section>
+    </div>
+
+    <canvas id="crt-static"></canvas>
+    <canvas id="crt-lines"></canvas>
+    
+    <script src="static.js"></script>
+    <script src="lines.js"></script>
+    <script src="crypt-lib.js"></script>
+    <script src="cv.js"></script>
+</body>
+</html>
