@@ -22,15 +22,23 @@ function highlightSyntax() {
         // Prevent double highlight
         if (code.includes('<span class="syn-')) return;
 
-        // Apply rules in order
+        let tokens = [];
+        let tokenIndex = 0;
+
+        // Apply rules in order, extracting matched chunks to prevent HTML corruption
         SYNTAC_DICT.forEach(rule => {
             code = code.replace(rule.regex, (match, p1) => {
-                // Determine what to wrap based on capturing groups vs whole match
                 const target = p1 !== undefined ? p1 : match;
-                // Avoid replacing inside existing span tags
-                if (match.includes('<span')) return match;
-                return match.replace(target, `<span class="syn-${rule.type}">${target}</span>`);
+                const id = `__SYN_TOKEN_${tokenIndex++}__`;
+                const wrapped = match.replace(target, `<span class="syn-${rule.type}">${target}</span>`);
+                tokens.push({ id, text: wrapped });
+                return id;
             });
+        });
+
+        // Rehydrate the tokens
+        tokens.forEach(token => {
+            code = code.replace(token.id, token.text);
         });
 
         block.innerHTML = code;
