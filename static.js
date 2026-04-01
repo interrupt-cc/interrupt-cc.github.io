@@ -41,6 +41,8 @@ const fsSource = `
     uniform float u_glitch_offset;
     uniform float u_pinch_factor;
     uniform float u_noise_floor;
+    uniform float u_bleed;
+    uniform float u_trails;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -103,6 +105,31 @@ const fsSource = `
         if (rollVal > 0.95) n += primaryBrightness;
         if (smallRoll > 0.99) n += secondaryBrightness;
 
+        // 6. Chromatic Ghosting (Moving Rainbow Patches)
+        // High-contrast, drifting color-subcarrier bleed patches
+        float ghostFreq = 2.0 + u_trails * 8.0;
+        vec2 ghostUv = uv * ghostFreq;
+        float ghostT = u_time * 0.4;
+        
+        // Layered sines for organic 'bubble' movement
+        float bubble = sin(ghostUv.x + ghostT) * cos(ghostUv.y + ghostT * 1.2);
+        bubble += sin(ghostUv.x * 0.8 - ghostT * 0.7) * cos(ghostUv.y * 1.5 + ghostT);
+        
+        float ghostThreshold = 0.5;
+        float ghostMask = smoothstep(ghostThreshold, ghostThreshold + 0.5, bubble);
+        
+        if (ghostMask > 0.01) {
+            vec2 pUv = floor(uv * 80.0) / 80.0; // Chunky pixels for the bleed
+            vec3 rainbow = vec3(
+                random(pUv + floor(u_time * 5.0) * 0.01),
+                random(pUv + floor(u_time * 5.0) * 0.01 + 1.0),
+                random(pUv + floor(u_time * 5.0) * 0.01 + 2.0)
+            );
+            n += (rainbow.r * 0.5) * ghostMask * u_bleed;
+            // Shift the final color towards the rainbow
+            n = mix(n, n + (rainbow.g - 0.5) * u_bleed, ghostMask * 0.5);
+        }
+
         // Saturation burst and standard scanlines
         float finalColor = n + u_saturation;
         float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.06;
@@ -131,6 +158,8 @@ const saturationUniformLocation = gl.getUniformLocation(program, "u_saturation")
 const glitchUniformLocation = gl.getUniformLocation(program, "u_glitch_offset");
 const pinchUniformLocation = gl.getUniformLocation(program, "u_pinch_factor");
 const noiseUniformLocation = gl.getUniformLocation(program, "u_noise_floor");
+const bleedUniformLocation = gl.getUniformLocation(program, "u_bleed");
+const trailsUniformLocation = gl.getUniformLocation(program, "u_trails");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -233,6 +262,8 @@ function render(time) {
     gl.uniform1f(glitchUniformLocation, glitchOffset);
     gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
     gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
+    gl.uniform1f(bleedUniformLocation, config.bleed || 0.0);
+    gl.uniform1f(trailsUniformLocation, config.trails || 0.0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
