@@ -64,7 +64,7 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 2001; /* Highest layer for calibration lines */
+  z-index: 11000; /* Above post-overlay (10000) and everything else */
   pointer-events: none;
   opacity: 0.8;
   image-rendering: pixelated;
