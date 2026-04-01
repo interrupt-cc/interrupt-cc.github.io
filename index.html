@@ -15,7 +15,9 @@
         <header>
             <div class="intro">
                 <p>Infinite as the result of division by zero.</p>
-                <p>This interface defines Eternal as a single fixed time...</p>
+                <div class="nav-links">
+                    <a href="#" id="cv-link" class="post-link">[ CV_MANIFEST ]</a>
+                </div>
             </div>
             <h1>INTERRUPT</h1>
         </header>
@@ -92,20 +94,32 @@
                 if (!url) return;
                 e.preventDefault();
                 const overlay = document.getElementById('post-overlay');
-                const frame = document.getElementById('post-frame');
-                const win = document.getElementById('post-window');
-
+                const title = document.querySelector('.window-title');
+                
+                title.textContent = 'POST::READ_SYSTEM';
                 frame.src = url;
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-
-                // Immediately calculate absolute pixel centering to avoid transform conflicts
-                const winW = win.offsetWidth || 800; // Expected width
-                const winH = win.offsetHeight || 600; // Expected height
-                win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
-                win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
-                win.style.transform = 'none';
             });
+        });
+
+        // CV Link Handler
+        document.getElementById('cv-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            const overlay = document.getElementById('post-overlay');
+            const frame = document.getElementById('post-frame');
+            const win = document.getElementById('post-window');
+            const title = document.querySelector('.window-title');
+            
+            title.textContent = 'CV::READ_MANIFEST';
+            frame.src = 'cv.html';
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            // Center window
+            const winW = win.offsetWidth || 800;
+            const winH = win.offsetHeight || 600;
+            win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
+            win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
+            win.style.transform = 'none';
         });
 
         document.getElementById('close-overlay').addEventListener('click', () => {
