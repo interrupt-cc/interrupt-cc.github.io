@@ -5,7 +5,7 @@
  */
 
 const fs = require('fs');
-const STOCHASTIC_ENCRYPT = require('./crypt-lib.js');
+const STOCHASTIC_ENCRYPT = require('../js/crypt-lib.js');
 
 async function processTemplate() {
     const [templatePath, outputPath, password] = process.argv.slice(2);

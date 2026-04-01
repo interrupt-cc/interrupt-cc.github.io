@@ -27,22 +27,34 @@ A zero-dependency, isomorphic PII redaction system built on native **SubtleCrypt
 - **Redaction Manifest**: `cv.html` uses "Glitch Redaction" blocks that are un-indexable by standard crawlers until decrypted locally by the user.
 
 ### Developer Tools:
-- **CLI Encryptor**: `node crypt-cli.js encrypt "[DATA]" "[PASS]"`
-- **Batch Redactor**: `node batch-redact.js cv-template.html cv.html [PASS]` (Automated build process).
-- **Verification Suite**: `node test-cli.js` or `test-browser.html` (Isomorphic testing).
+- **CLI Encryptor**: `node tools/crypt-cli.js encrypt "[DATA]" "[PASS]"`
+- **Batch Redactor**: `node tools/batch-redact.js cv-template.html cv.html [PASS]` (Automated build process).
+- **Verification Suite**: `node tests/test-cli.js` or `tests/test-browser.html` (Isomorphic testing).
 
 ## 04: BUILD_MANIFEST
 This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NPM libraries are used for security or core logic.
 
 ```
 /
-├── crypt-lib.js     <-- Isomorphic Crypto Core
-├── crypt-cli.js     <-- Local Redaction Tool
-├── batch-redact.js  <-- Build Script
-├── static.js        <-- Background WebGL (Glitches/Clouds)
-├── lines.js         <-- Foreground WebGL (Aperture Grill)
-├── chat.js          <-- Decentralized Transceiver
-└── test-core.js     <-- Isomorphic Verification
+├── index.html
+├── cv.html          <-- Generated Manifest
+├── cv-template.html <-- Redaction Template
+├── README.md
+├── css/
+│   └── style.css
+├── js/
+│   ├── static.js
+│   ├── lines.js
+│   ├── chat.js
+│   ├── crypt-lib.js
+│   └── cv.js
+├── tools/
+│   ├── crypt-cli.js
+│   └── batch-redact.js
+└── tests/
+    ├── test-core.js
+    ├── test-cli.js
+    └── test-browser.html
 ```
 
 ---

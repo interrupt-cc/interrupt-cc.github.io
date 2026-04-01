@@ -4,7 +4,7 @@
  * Usage: node crypt-cli.js [encrypt|decrypt] [data] [password]
  */
 
-const STOCHASTIC_ENCRYPT = require('./crypt-lib.js');
+const STOCHASTIC_ENCRYPT = require('../js/crypt-lib.js');
 
 async function main() {
   const args = process.argv.slice(2);

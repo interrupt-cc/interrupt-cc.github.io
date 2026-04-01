@@ -3,7 +3,7 @@
  * Runs the isomorphic test suite in the terminal.
  */
 
-const STOCHASTIC_ENCRYPT = require('./crypt-lib.js');
+const STOCHASTIC_ENCRYPT = require('../js/crypt-lib.js');
 const STOCHASTIC_TEST_SUITE = require('./test-core.js');
 
 async function runCliTests() {
