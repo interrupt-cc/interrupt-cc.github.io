@@ -338,6 +338,9 @@ function render(time) {
         if (Math.abs(glitchOffset) < 0.001) glitchOffset = 0;
     }
 
+    // Publish glitch amount for layout tearing
+    document.documentElement.style.setProperty('--crt-glitch', glitchOffset);
+
     gl.useProgram(program);
     gl.enableVertexAttribArray(positionAttributeLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
