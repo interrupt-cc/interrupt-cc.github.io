@@ -262,6 +262,9 @@ function render(time) {
         if (saturation < 0.005) saturation = 0;
     }
 
+    // Publish saturation to CSS for reactive layout transparency
+    document.documentElement.style.setProperty('--crt-saturation', saturation);
+
     // 2. Periodic Geometry Pinch Spikes
     const pInterval = config['p-interval'] || 4.0;
     const pRandom = config['p-random'] || 0.5;
