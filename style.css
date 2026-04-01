@@ -54,30 +54,20 @@ body::before {
     rgba(0, 255, 0, 0.02),
     rgba(0, 0, 255, 0.05)
   );
-  z-index: 1000;
-  background-size: 100% 4px, 3px 100%;
+  z-index: 2000; /* On top of everything */
   pointer-events: none;
 }
 
-/* Sub-pixel Vertical Red Grid (Aperture Grill) */
-body::after {
-  content: " ";
-  display: block;
+#crt-lines {
   position: fixed;
   top: 0;
   left: 0;
-  bottom: 0;
-  right: 0;
-  /* Very thin red vertical lines */
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 40px,
-    rgba(255, 40, 0, 0.15) 40px,
-    rgba(255, 40, 0, 0.15) 41px
-  );
-  z-index: 2000; /* On top of everything */
+  width: 100vw;
+  height: 100vh;
+  z-index: 2001; /* Highest layer for calibration lines */
   pointer-events: none;
+  opacity: 0.8;
+  image-rendering: pixelated;
 }
 
 .gutter {

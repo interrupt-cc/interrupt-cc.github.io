@@ -53,7 +53,9 @@
         </div>
     </div>
 
+    <canvas id="crt-lines"></canvas>
     <script src="static.js"></script>
+    <script src="lines.js"></script>
     <script>
         // Global CRT Configuration
         window.CRT_CONFIG = {
@@ -66,7 +68,10 @@
             bleed: 0.35,
             trails: 0.45,
             stoch: 0.55,
-            'c-buffer': 0.15
+            'c-buffer': 0.15,
+            'g-bunch': 0.25,
+            'g-falloff': 0.15,
+            'g-alpha': 0.4
         };
 
         window.addEventListener('message', (event) => {
