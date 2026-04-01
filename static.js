@@ -203,6 +203,7 @@ let burstMode = 0; // 0: SNAP, 1: BUILD
 let pinchSpike = 0;
 let lastPinchTime = 0; // MISSING WAS PROX_CAUSE OF BREAK
 let glitchOffset = 0;
+let tearOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
 
@@ -333,13 +334,20 @@ function render(time) {
     if (time - lastGlitchTime > 2.0 + Math.random() * 5.0) {
         glitchOffset = (Math.random() - 0.5) * 0.2;
         lastGlitchTime = time;
+        // Sync the mechanical tear to the start of the glitch
+        tearOffset = glitchOffset;
     } else {
         glitchOffset *= 0.5; 
         if (Math.abs(glitchOffset) < 0.001) glitchOffset = 0;
+        
+        // Mechanical tear lingers much longer (slow decay 0.99)
+        tearOffset *= 0.992;
+        if (Math.abs(tearOffset) < 0.0001) tearOffset = 0;
     }
 
-    // Publish glitch amount for layout tearing
+    // Publish values for layout tearing
     document.documentElement.style.setProperty('--crt-glitch', glitchOffset);
+    document.documentElement.style.setProperty('--crt-tear', tearOffset);
 
     gl.useProgram(program);
     gl.enableVertexAttribArray(positionAttributeLocation);
