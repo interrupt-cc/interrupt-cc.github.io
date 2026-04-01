@@ -44,9 +44,11 @@ const fsSource = `
     uniform float u_bleed;
     // ghost uniforms
     uniform vec2 u_ghost_pos;
-    uniform float u_ghost_radius;
     uniform float u_ghost_alpha;
-    uniform float u_ghost_stretch;
+    uniform float u_ghost_stoch;
+    uniform float u_ghost_cbuffer;
+    uniform vec2 u_ghost_spread;
+    uniform float u_ghost_id;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -112,18 +114,32 @@ const fsSource = `
         // --- CONVERT TO RGB HERE ---
         vec3 color = vec3(n);
 
-        // 6. SINGLE PHANTOM INK DRIP
-        // Highly localized CMYK distortion
+        // Saturation burst and standard scanlines
+        vec3 finalColor = color + vec3(u_saturation);
+        float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.06;
+        finalColor -= vec3(scanline);
+
+        // 6. STOCHASTIC PHANTOM CLUSTER (INK CLOUD) - OVERTOP LAYER
+        // Moved to the very end to ensure it's not washed out by noise or bursts
         if (u_ghost_alpha > 0.01) {
-            vec2 ghostDir = uv - u_ghost_pos;
-            // Apply u_ghost_stretch to elongate vertically
-            ghostDir.y *= (1.0 / u_ghost_stretch); 
+            vec2 gUv = uv;
+            if (u_ghost_cbuffer > 0.01) {
+                float gBand = step(0.1, random(vec2(floor(uv.y * 40.0), u_time * 2.5)));
+                if (gBand > 0.5) gUv.x += u_ghost_cbuffer * (random(vec2(u_time)) - 0.5);
+            }
+            // ATTRACTOR LOGIC
+            vec2 rel = (gUv - u_ghost_pos) / u_ghost_spread;
+            float distSq = dot(rel, rel);
+            // MASSIVE RELAXED FALLOFF for absolute visibility
+            float attractor = exp(-distSq * 2.0); 
             
-            float dist = length(ghostDir);
-            float ghostMask = smoothstep(u_ghost_radius, u_ghost_radius - 0.02, dist);
+            float gridRes = 60.0;
+            vec2 grid = floor(gUv * gridRes) / gridRes;
+            float r = random(grid + u_ghost_id);
+            float ghostMask = step(1.0 - (u_ghost_stoch * attractor), r);
             
             if (ghostMask > 0.0) {
-                vec2 pUv = floor(uv * 80.0) / 80.0; // Chunky pixels for the bleed
+                vec2 pUv = grid;
                 float hueSeed = random(pUv + 77.0);
                 vec3 cmyk;
                 if (hueSeed < 0.33) cmyk = vec3(0.0, 1.0, 1.0); 
@@ -133,14 +149,10 @@ const fsSource = `
                 float k = random(pUv + 99.0);
                 cmyk *= (1.0 - k * 0.2); 
                 
-                color = mix(color, cmyk, ghostMask * u_bleed * u_ghost_alpha);
+                // ADDITIVE BLENDING OVER TOP
+                finalColor += cmyk * ghostMask * u_bleed * u_ghost_alpha * 1.5;
             }
         }
-
-        // Saturation burst and standard scanlines
-        vec3 finalColor = color + vec3(u_saturation);
-        float scanline = sin(uv.y * u_resolution.y * 1.5) * 0.06;
-        finalColor -= vec3(scanline);
 
         gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -167,9 +179,11 @@ const pinchUniformLocation = gl.getUniformLocation(program, "u_pinch_factor");
 const noiseUniformLocation = gl.getUniformLocation(program, "u_noise_floor");
 const bleedUniformLocation = gl.getUniformLocation(program, "u_bleed");
 const ghostPosLoc = gl.getUniformLocation(program, "u_ghost_pos");
-const ghostRadiusLoc = gl.getUniformLocation(program, "u_ghost_radius");
 const ghostAlphaLoc = gl.getUniformLocation(program, "u_ghost_alpha");
-const ghostStretchLoc = gl.getUniformLocation(program, "u_ghost_stretch");
+const ghostStochLoc = gl.getUniformLocation(program, "u_ghost_stoch");
+const ghostCBufferLoc = gl.getUniformLocation(program, "u_ghost_cbuffer");
+const ghostSpreadLoc = gl.getUniformLocation(program, "u_ghost_spread");
+const ghostIdLoc = gl.getUniformLocation(program, "u_ghost_id");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -192,14 +206,15 @@ let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
 
-// GHOST (INK DRIP) STATE MACHINE
+// GHOST (INK CLOUD) STATE MACHINE
 let ghostState = 'IDLE'; // IDLE, BURN, DRIP, FADE
 let ghostStartTime = 0;
-let ghostPos = [0.5, 0.5];
-let ghostRadius = 0;
+let ghostPos = [0.0, 0.0];
+let ghostVel = [0.0, 0.0]; // Track movement vector
 let ghostAlpha = 0;
-let ghostStretch = 1.0;
-let lastGhostTime = 0;
+let ghostId = 0;
+let ghostSpread = [1.5, 1.5];
+let lastGhostTime = -10.0; // Force immediate start
 
 function render(time) {
     time *= 0.001; // convert to seconds
@@ -261,40 +276,43 @@ function render(time) {
         if (pinchSpike < 0.001) pinchSpike = 0;
     }
 
-    // 3. INK DRIP STATE MACHINE
-    const ghostDensity = config.trails || 0.3;
-    const ghostInterval = (1.1 - ghostDensity) * 15.0; // inverse density to interval
+    // 3. COMPRESSION BUFFER STATE MACHINE
+    const ghostDensity = config.trails || 0.45;
+    const ghostInterval = (1.1 - ghostDensity) * 3.0; // Much more frequent for visibility
 
     if (ghostState === 'IDLE' && (time - lastGhostTime) > ghostInterval) {
         ghostState = 'BURN';
         ghostStartTime = time;
-        ghostPos = [0.1 + Math.random() * 0.8, 0.4 + Math.random() * 0.4]; // Start high-ish
+        ghostId = Math.random() * 1000.0;
+        
+        // MOVED back to center area for absolute testing
+        ghostPos = [0.2 + Math.random() * 0.6, 0.4 + Math.random() * 0.2];
+        
+        // Random drift speed
+        ghostVel = [(Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005];
+        
+        // HUGE spread factor for testing
+        ghostSpread = [0.3 + Math.random() * 0.4, 0.3 + Math.random() * 0.4];
     }
 
     if (ghostState === 'BURN') {
         const elapsed = time - ghostStartTime;
-        const attack = 1.0; 
+        const attack = 0.8; 
         ghostAlpha = Math.min(1.0, elapsed / attack);
-        ghostRadius = ghostAlpha * 0.05; 
-        ghostStretch = 1.0;
         if (elapsed > attack) {
             ghostState = 'DRIP';
             ghostStartTime = time;
         }
     } else if (ghostState === 'DRIP') {
         const elapsed = time - ghostStartTime;
-        const dripDuration = 4.0; // Faster total drip
+        const dripDuration = 3.0;
         const progress = Math.min(1.0, elapsed / dripDuration);
-        const visualProg = Math.pow(progress, 0.7); // Accelerates the beginning of the stretch
         
-        // Drip Down (slightly faster)
-        ghostPos[1] -= elapsed * 0.007; 
+        // Drift away from the corner
+        ghostPos[0] += ghostVel[0];
+        ghostPos[1] += ghostVel[1];
         
-        // ELONGATE and THIN (higher intensity)
-        ghostStretch = 1.0 + visualProg * 8.0; 
-        ghostRadius = 0.05 * (1.0 - visualProg * 0.8); // Shrunk smaller (to 20% original)
-        
-        if (ghostPos[1] < -0.2 || progress >= 1.0) {
+        if (progress >= 1.0 || Math.abs(ghostPos[0] - 0.5) > 0.7 || Math.abs(ghostPos[1] - 0.5) > 0.7) {
             ghostState = 'FADE';
             ghostStartTime = time;
         }
@@ -331,9 +349,11 @@ function render(time) {
     gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
     // ghost uniforms
     gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);
-    gl.uniform1f(ghostRadiusLoc, ghostRadius);
     gl.uniform1f(ghostAlphaLoc, ghostAlpha);
-    gl.uniform1f(ghostStretchLoc, ghostStretch);
+    gl.uniform1f(ghostStochLoc, (config.stoch !== undefined) ? config.stoch : 0.55);
+    gl.uniform1f(ghostCBufferLoc, (config['c-buffer'] !== undefined) ? config['c-buffer'] : 0.15);
+    gl.uniform2f(ghostSpreadLoc, ghostSpread[0], ghostSpread[1]);
+    gl.uniform1f(ghostIdLoc, ghostId);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

@@ -24,12 +24,13 @@
             <section class="feed">
                 <ul class="post-list">
                     <li class="post-item">
-                        <span class="post-id">0x0</span>
+                        <span class="post-id">0x1</span>
                         <a href="posts/4k_pages_of_pain.html" class="post-link">4k pages of pain</a>
                         <span class="post-date">2026-03-31</span>
                     </li>
-                    <li class="post-item" style="border-top: 1px dashed var(--dim-color); padding-top: 2rem; margin-top: 3rem;">
-                        <span class="post-id">0xX</span>
+                    <li class="post-item"
+                        style="border-top: 1px dashed var(--dim-color); padding-top: 2rem; margin-top: 3rem;">
+                        <span class="post-id">0x0</span>
                         <a href="controls.html" class="post-link">SYSTEM_CALIBRATE</a>
                         <span class="post-date">CALIBRATION_REQUIRED</span>
                     </li>
@@ -38,7 +39,7 @@
         </main>
 
         <footer>
-            <p>[ ACCESS_LOG: SUCCESS ]</p>
+            <p>[ ACCESS_LOG: DELETED ]</p>
         </footer>
     </div>
 
@@ -62,8 +63,10 @@
             noise: 0.25,
             freq: 4,
             snap: 1.8,
-            bleed: 0.2,
-            trails: 0.3
+            bleed: 0.35,
+            trails: 0.45,
+            stoch: 0.55,
+            'c-buffer': 0.15
         };
 
         window.addEventListener('message', (event) => {
@@ -80,11 +83,11 @@
                 const overlay = document.getElementById('post-overlay');
                 const frame = document.getElementById('post-frame');
                 const win = document.getElementById('post-window');
-                
+
                 frame.src = url;
                 overlay.classList.add('active');
                 document.body.style.overflow = 'hidden';
-                
+
                 // Immediately calculate absolute pixel centering to avoid transform conflicts
                 const winW = win.offsetWidth || 800; // Expected width
                 const winH = win.offsetHeight || 600; // Expected height
@@ -114,7 +117,7 @@
             startY = e.clientY;
             initialX = rect.left;
             initialY = rect.top;
-            
+
             win.style.transform = 'none';
             win.style.left = initialX + 'px';
             win.style.top = initialY + 'px';
