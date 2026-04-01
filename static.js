@@ -283,15 +283,16 @@ function render(time) {
         }
     } else if (ghostState === 'DRIP') {
         const elapsed = time - ghostStartTime;
-        const dripDuration = 6.0;
+        const dripDuration = 4.0; // Faster total drip
         const progress = Math.min(1.0, elapsed / dripDuration);
+        const visualProg = Math.pow(progress, 0.7); // Accelerates the beginning of the stretch
         
-        // Drip Down
-        ghostPos[1] -= elapsed * 0.005; 
+        // Drip Down (slightly faster)
+        ghostPos[1] -= elapsed * 0.007; 
         
-        // ELONGATE and THIN based on progress
-        ghostStretch = 1.0 + progress * 6.0; // stretch up to 7x
-        ghostRadius = 0.05 * (1.0 - progress * 0.6); // thin out 60%
+        // ELONGATE and THIN (higher intensity)
+        ghostStretch = 1.0 + visualProg * 8.0; 
+        ghostRadius = 0.05 * (1.0 - visualProg * 0.8); // Shrunk smaller (to 20% original)
         
         if (ghostPos[1] < -0.2 || progress >= 1.0) {
             ghostState = 'FADE';
