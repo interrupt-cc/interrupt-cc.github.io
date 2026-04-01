@@ -60,8 +60,11 @@ const fsSource = `
         // Combining spatial and temporal randomness for "boiling" static
         float n = random(uv + fract(u_time * 0.77));
         
-        // Occasional horizontal "rolling" interference bands
-        float roll = sin(uv.y * 5.0 + u_time * 2.0);
+        // Occasional horizontal or diagonal "rolling" interference bands
+        // We pulse the angle slightly over time
+        float angleState = step(0.7, random(vec2(floor(u_time * 0.2), 3.0)));
+        float rollAngle = angleState * 0.8; // 0 or ~45 degrees
+        float roll = sin((uv.y + uv.x * rollAngle) * 5.0 + u_time * 2.0);
         if (roll > 0.9) {
            n += 0.15;
         }
