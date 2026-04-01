@@ -41,19 +41,23 @@ class StochasticSynthProcessor extends AudioWorkletProcessor {
         this.chordOscs[0].set(261.63, 0.1); this.chordOscs[1].set(311.13, 0.08); this.chordOscs[2].set(392.00, 0.06); this.chordOscs[3].set(466.16, 0.05);
         this.targetOsc = new SineOscillator(this.sampleRate); this.targetOsc.set(0, 0);
         this.userOsc = new SineOscillator(this.sampleRate); this.userOsc.set(0, 0);
+        this.chordAmpScaler = 0.0; this.targetChordAmpScaler = 0.0;
         this.port.onmessage = (event) => {
             const data = event.data;
             if (data[0] === 0) { this.userOsc.set(data[1], data[2]); } 
             else if (data[0] === 1) { this.targetOsc.set(data[1], data[2]); } 
-            else if (data[0] === 2) { this.targetOsc.set(this.targetOsc.frequency, 0.0); this.userOsc.set(this.userOsc.frequency, 0.0); }
+            else if (data[0] === 2) { this.targetOsc.set(this.targetOsc.frequency, 0.0); this.userOsc.set(this.userOsc.frequency, 0.0); this.targetChordAmpScaler = 0.0; }
+            else if (data[0] === 3) { this.targetChordAmpScaler = data[1]; }
         };
     }
     process(inputs, outputs, parameters) {
         const output = outputs[0];
         const channelCount = output.length;
         for (let i = 0; i < output[0].length; ++i) {
+            this.chordAmpScaler += (this.targetChordAmpScaler - this.chordAmpScaler) * 0.005;
             let chordSample = 0;
             for(let o = 0; o < this.chordOscs.length; o++) { chordSample += this.chordOscs[o].process(); }
+            chordSample *= this.chordAmpScaler;
             const targetSample = this.targetOsc.process();
             const userSample = this.userOsc.process();
             let master = chordSample + targetSample + userSample;
@@ -126,6 +130,11 @@ registerProcessor('stochastic-synth-v1', StochasticSynthProcessor);
     shutdownAnomaly() {
         // [ Type 2: Shut down active anomalies, leave chord playing ]
         this.sendEvent(2, 0, 0);
+    }
+
+    setChordVolume(vol) {
+        // [ Type 3: Gate Master Chord Volume ]
+        this.sendEvent(3, vol, 0);
     }
 }
 

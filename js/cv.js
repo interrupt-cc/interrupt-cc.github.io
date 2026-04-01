@@ -43,10 +43,7 @@ const DecryptManager = {
     ];
     let time = 0;
 
-    // Enable Audio Targets
-    if (window.STOCHASTIC_AUDIO) {
-        window.STOCHASTIC_AUDIO.activateTarget(targetFreq, 0.3); // Play the target tone faintly
-    }
+    // We do NOT activate targets or volume yet. The canvas is a "Touch Synthesizer"
 
     const draw = () => {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // trails
@@ -107,10 +104,19 @@ const DecryptManager = {
         }
     };
 
-    canvas.onmousedown = (e) => { isDragging = true; updateFromMouse(e); };
+    const startInteraction = (e) => {
+        isDragging = true; 
+        if (window.STOCHASTIC_AUDIO) {
+            window.STOCHASTIC_AUDIO.setChordVolume(1.0); // Fade in background chord
+            window.STOCHASTIC_AUDIO.activateTarget(targetFreq, 0.3); // Reveal target frequency
+        }
+        updateFromMouse(e);
+    };
+
+    canvas.onmousedown = startInteraction;
     canvas.onmousemove = (e) => { if(isDragging) updateFromMouse(e); };
     
-    canvas.ontouchstart = (e) => { isDragging = true; updateFromMouse(e); };
+    canvas.ontouchstart = startInteraction;
     canvas.ontouchmove = (e) => { 
         if(isDragging) {
             e.preventDefault(); // Prevent vertical scrolling while hacking the signal
@@ -165,7 +171,11 @@ const DecryptManager = {
             }, 1000);
             if (window.CRT_ABERRATION) window.CRT_ABERRATION();
             userAmp = 10; userFreq = 480; // Reset to 1 octave above
-            if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.updateUserSync(480, 0);
+            if (window.STOCHASTIC_AUDIO) {
+                window.STOCHASTIC_AUDIO.updateUserSync(480, 0);
+                window.STOCHASTIC_AUDIO.activateTarget(targetFreq, 0.0); // Silence Target
+                window.STOCHASTIC_AUDIO.setChordVolume(0.0); // Silence Chord
+            }
         }
     };
 
