@@ -42,7 +42,10 @@ const fsSource = `
     uniform float u_pinch_factor;
     uniform float u_noise_floor;
     uniform float u_bleed;
-    uniform float u_trails;
+    // ghost uniforms
+    uniform vec2 u_ghost_pos;
+    uniform float u_ghost_radius;
+    uniform float u_ghost_alpha;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -108,40 +111,30 @@ const fsSource = `
         // --- CONVERT TO RGB HERE ---
         vec3 color = vec3(n);
 
-        // 6. Chromatic Ghosting (Moving Rainbow Patches)
-        // High-contrast, drifting color-subcarrier bleed patches
-        // Making it sparse: only one "bubble" area typically active
-        float ghostFreq = 1.0 + u_trails * 4.0;
-        float ghostT = u_time * 0.3;
-        
-        // Use a single low-freq sine product for a sparse 'wandering' patch
-        float bubble = sin(uv.x * ghostFreq + ghostT) * cos(uv.y * (ghostFreq * 1.1) - ghostT);
-        // Add a long-period pulse so it's not always on screen
-        bubble *= sin(u_time * 0.5) * 0.5 + 0.5;
-        
-        float ghostThreshold = 0.65;
-        float ghostMask = smoothstep(ghostThreshold, ghostThreshold + 0.2, bubble);
-        
-        if (ghostMask > 0.0) {
-            vec2 pUv = floor(uv * 60.0) / 60.0; // Chunky pixels for the bleed
+        // 6. SINGLE PHANTOM INK DRIP
+        // Highly localized CMYK distortion
+        if (u_ghost_alpha > 0.01) {
+            // Distort the distance check to feel like a dripping 'blob'
+            vec2 ghostDir = uv - u_ghost_pos;
+            // Vertical stretch: makes the distance check squashed vertically (elongated visual)
+            ghostDir.y *= 0.5; 
             
-            // Generate a seed to pick from CMYK primaries
-            float hueSeed = random(pUv + 77.0);
-            vec3 cmyk;
-            if (hueSeed < 0.33) {
-                cmyk = vec3(0.0, 1.0, 1.0); // CYAN
-            } else if (hueSeed < 0.66) {
-                cmyk = vec3(1.0, 0.0, 1.0); // MAGENTA
-            } else {
-                cmyk = vec3(1.0, 1.0, 0.0); // YELLOW
+            float dist = length(ghostDir);
+            float ghostMask = smoothstep(u_ghost_radius, u_ghost_radius - 0.02, dist);
+            
+            if (ghostMask > 0.0) {
+                vec2 pUv = floor(uv * 80.0) / 80.0; // Chunky pixels for the bleed
+                float hueSeed = random(pUv + 77.0);
+                vec3 cmyk;
+                if (hueSeed < 0.33) cmyk = vec3(0.0, 1.0, 1.0); 
+                else if (hueSeed < 0.66) cmyk = vec3(1.0, 0.0, 1.0); 
+                else cmyk = vec3(1.0, 1.0, 0.0); 
+                
+                float k = random(pUv + 99.0);
+                cmyk *= (1.0 - k * 0.2); 
+                
+                color = mix(color, cmyk, ghostMask * u_bleed * u_ghost_alpha);
             }
-            
-            // "K" (Black) component: randomly darkening the CMY values
-            float k = random(pUv + 99.0);
-            cmyk *= (1.0 - k * 0.4); 
-            
-            // Blend the CMYK ghost into the grayscale phosphor
-            color = mix(color, cmyk, ghostMask * u_bleed);
         }
 
         // Saturation burst and standard scanlines
@@ -173,7 +166,9 @@ const glitchUniformLocation = gl.getUniformLocation(program, "u_glitch_offset");
 const pinchUniformLocation = gl.getUniformLocation(program, "u_pinch_factor");
 const noiseUniformLocation = gl.getUniformLocation(program, "u_noise_floor");
 const bleedUniformLocation = gl.getUniformLocation(program, "u_bleed");
-const trailsUniformLocation = gl.getUniformLocation(program, "u_trails");
+const ghostPosLoc = gl.getUniformLocation(program, "u_ghost_pos");
+const ghostRadiusLoc = gl.getUniformLocation(program, "u_ghost_radius");
+const ghostAlphaLoc = gl.getUniformLocation(program, "u_ghost_alpha");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -195,6 +190,14 @@ let lastPinchTime = 0; // MISSING WAS PROX_CAUSE OF BREAK
 let glitchOffset = 0;
 let lastBurstTime = 0;
 let lastGlitchTime = 0;
+
+// GHOST (INK DRIP) STATE MACHINE
+let ghostState = 'IDLE'; // IDLE, BURN, DRIP, FADE
+let ghostStartTime = 0;
+let ghostPos = [0.5, 0.5];
+let ghostRadius = 0;
+let ghostAlpha = 0;
+let lastGhostTime = 0;
 
 function render(time) {
     time *= 0.001; // convert to seconds
@@ -256,6 +259,42 @@ function render(time) {
         if (pinchSpike < 0.001) pinchSpike = 0;
     }
 
+    // 3. INK DRIP STATE MACHINE
+    const ghostDensity = config.trails || 0.3;
+    const ghostInterval = (1.1 - ghostDensity) * 15.0; // inverse density to interval
+
+    if (ghostState === 'IDLE' && (time - lastGhostTime) > ghostInterval) {
+        ghostState = 'BURN';
+        ghostStartTime = time;
+        ghostPos = [0.1 + Math.random() * 0.8, 0.4 + Math.random() * 0.4]; // Start high-ish
+    }
+
+    if (ghostState === 'BURN') {
+        const elapsed = time - ghostStartTime;
+        const attack = 1.0; 
+        ghostAlpha = Math.min(1.0, elapsed / attack);
+        ghostRadius = ghostAlpha * 0.04; // grow to line size
+        if (elapsed > attack) {
+            ghostState = 'DRIP';
+            ghostStartTime = time;
+        }
+    } else if (ghostState === 'DRIP') {
+        const elapsed = time - ghostStartTime;
+        ghostPos[1] -= elapsed * 0.005; // Drip down the page
+        if (ghostPos[1] < -0.1 || elapsed > 8.0) {
+            ghostState = 'FADE';
+            ghostStartTime = time;
+        }
+    } else if (ghostState === 'FADE') {
+        const elapsed = time - ghostStartTime;
+        const release = 0.8;
+        ghostAlpha = Math.max(0, 1.0 - (elapsed / release));
+        if (ghostAlpha <= 0) {
+            ghostState = 'IDLE';
+            lastGhostTime = time;
+        }
+    }
+
     // 3. Random Glitch Logic
     if (time - lastGlitchTime > 2.0 + Math.random() * 5.0) {
         glitchOffset = (Math.random() - 0.5) * 0.2;
@@ -276,8 +315,11 @@ function render(time) {
     gl.uniform1f(glitchUniformLocation, glitchOffset);
     gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
     gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
-    gl.uniform1f(bleedUniformLocation, config.bleed || 0.0);
-    gl.uniform1f(trailsUniformLocation, config.trails || 0.0);
+    gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
+    // ghost uniforms
+    gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);
+    gl.uniform1f(ghostRadiusLoc, ghostRadius);
+    gl.uniform1f(ghostAlphaLoc, ghostAlpha);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
