@@ -175,6 +175,9 @@ class StochasticPlayer {
             width: 320px; border-top: 0px solid var(--dim-color); margin-top: 10px;
             text-align: left; scrollbar-width: none;
         `;
+        
+        // Prevent clicks inside the drawer from pausing the player
+        drawer.addEventListener('click', (e) => e.stopPropagation());
 
         // 1. Hardware Control Hub (Knobs)
         const ctrlPanel = document.createElement('div');
