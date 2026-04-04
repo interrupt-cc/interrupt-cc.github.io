@@ -272,6 +272,16 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
     
     routePlayer(audioElement) {
         if (!this.ctx || this.playerRouted) return;
+        
+        // --- LOCAL PROTECTION BYPASS ---
+        // Browser security strictly blocks the AudioContext from capturing local music files (file://).
+        // If we detect the file protocol, we DO NOT route through the context to prevent silence.
+        if (window.location.protocol === 'file:') {
+            console.warn('[AUDIO_CORE]: Local protocol bypass. WebAudio routing disabled to restore music playback.');
+            this.playerRouted = true; // Still mark as routed to stop multiple sources
+            return;
+        }
+
         try {
             this.playerSource = this.ctx.createMediaElementSource(audioElement);
             
@@ -286,7 +296,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             this.playerRouted = true;
             console.log('[AUDIO_CORE]: MediaElementSourceNode captured for granular processing.');
         } catch (e) {
-            console.warn('[AUDIO_CORE]: WebAudio Capture Blocked (Security/CORS). Falling back to direct HTML5 playback.', e);
+            console.warn('[AUDIO_CORE]: WebAudio Capture Blocked. Falling back to direct HTML5 playback.', e);
         }
     }
 
