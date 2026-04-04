@@ -163,11 +163,15 @@ class StochasticPlayer {
         `;
 
         playerUI.addEventListener('click', (e) => {
-            // Only trigger play on the text area, not the [+] toggle
+            // Explicitly handle drawer toggle
             if (e.target.id === 'sp-toggle') {
                 this.toggleDrawer();
                 return;
             }
+
+            // Only trigger play/pause if clicking the status or track name
+            const isText = e.target.id === 'sp-status' || e.target.id === 'sp-track' || e.target.parentElement?.id === 'sp-status';
+            if (!isText) return;
 
             // Unlocks AudioContext exactly once
             if (window.STOCHASTIC_AUDIO) {
