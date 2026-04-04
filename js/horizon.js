@@ -1,6 +1,6 @@
 /**
- * horizon.js - True 3D Perspective Ocean Mesh
- * Multi-directional ripple interference with kinetic energy envelopes.
+ * horizon.js - Stable 3D Perspective Ocean Mesh
+ * Fixed-structure perspective with isolated auditory deformation.
  */
 
 class Ripple {
@@ -10,9 +10,9 @@ class Ripple {
         this.angle = angle || Math.random() * Math.PI * 2;
         this.color = color || '#00FFFF';
         this.age = 0;
-        this.maxAge = 120; // frames
-        this.peakAmp = 40 + Math.random() * 40;
-        this.wavelength = 0.18; // k (Spatial Frequency - near but not same as grid units)
+        this.maxAge = 150; // frames
+        this.peakAmp = 25 + Math.random() * 35;
+        this.wavelength = 0.15; // Spatial frequency
     }
 
     update() {
@@ -21,7 +21,6 @@ class Ripple {
     }
 
     getAmplitude() {
-        // Energy Envelope: Sine swell and decay
         const life = this.age / this.maxAge;
         return this.peakAmp * Math.sin(life * Math.PI);
     }
@@ -33,14 +32,8 @@ class HorizonGrid {
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
-        
-        this.vanishX = this.width / 2;
-        this.vanishY = this.height / 2;
-        this.focalLength = 350;
+        this.onResize();
+        this.focalLength = 400;
         
         this.ripples = [];
         this.palette = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
@@ -57,40 +50,39 @@ class HorizonGrid {
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.vanishX = this.width / 2;
-        this.vanishY = this.height / 2;
+        this.vanishY = this.height * 0.65; // Lower horizon for fly-over feel
     }
 
     triggerRipple() {
-        // Spawn from various angles for complex interference
-        const angle = (Math.random() - 0.5) * Math.PI * 0.5; // Frontal arc
+        const angle = (Math.random() - 0.5) * Math.PI * 0.6;
         this.ripples.push(new Ripple(0, 0, angle, this.palette[this.colorIdx % this.palette.length]));
         this.colorIdx++;
     }
 
     project(x, y, z) {
-        // True 3D perspective projection
-        // z is distance from viewer
         const scale = this.focalLength / Math.max(0.1, z);
         return {
             x: this.vanishX + x * scale,
-            y: this.vanishY + y * scale,
+            y: this.vanishY - y * scale, // Subtract y because screen space y is downward
             scale: scale
         };
     }
 
     getDeformation(x, z, activityScale, cloudEnv) {
         let yOffset = 0;
+        
+        // 1. Permanent 'Idol Swell' (Baseline ocean feel)
+        yOffset += Math.sin(z * 0.05 - this.time * 0.02) * 8;
+        
+        // 2. Audio-active ripples
         this.ripples.forEach(r => {
-            // Rotated coordinate for directional ripples
             const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
-            const phi = r.wavelength * rx - (this.time * 0.15);
-            
+            const phi = r.wavelength * rx - (this.time * 0.12);
             yOffset += Math.sin(phi) * r.getAmplitude() * activityScale;
         });
 
-        // Acid Frying Jitter
-        const jitterIntensity = 2.0 * activityScale * (1.0 + cloudEnv * 5.0);
-        const jitter = (Math.random() - 0.5) * jitterIntensity;
+        // 3. Cloud-peak Jitter (Scaled to Envelope)
+        const jitter = (Math.random() - 0.5) * 5.0 * cloudEnv;
         
         return yOffset + jitter;
     }
@@ -98,10 +90,7 @@ class HorizonGrid {
     animate() {
         this.time += 1.0;
         this.draw();
-        
-        // Cleanup aged ripples
         this.ripples = this.ripples.filter(r => r.update());
-        
         requestAnimationFrame(() => this.animate());
     }
 
@@ -110,60 +99,55 @@ class HorizonGrid {
         const w = this.width;
         const h = this.height;
 
-        // 1. Burn-in Trails
-        ctx.fillStyle = 'rgba(8, 9, 10, 0.2)'; 
+        // Reset with Trails
+        ctx.fillStyle = 'rgba(8, 9, 10, 0.25)'; 
         ctx.fillRect(0, 0, w, h);
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
         const cloudEnv = window.STOCHASTIC_AUDIO?.currentCloudEnv || 0;
-        const activityScale = (rms * 4.0) + (cloudEnv * 3.5);
+        // activityScale ONLY affects deformation amplitude
+        const activityScale = 0.5 + (rms * 4.0) + (cloudEnv * 3.0);
         
-        // 2. Mesh Configuration
-        const rows = 35; // Z depth
-        const cols = 40; // X width
-        const gridStepZ = 6.0;
-        const gridStepX = 15.0;
+        const rows = 30; // Z steps
+        const cols = 28; // X steps
+        const stepZ = 12.0;
+        const stepX = 25.0;
 
-        // Draw surface as a continuous mesh of quads
         for (let zI = 0; zI < rows - 1; zI++) {
-            // Movement scrolling: offset the initial Z
-            const scroll = (this.time * 0.5) % gridStepZ;
-            const zNear = (zI * gridStepZ) + scroll + 15; // +15 to avoid near-plane clipping
-            const zFar = ((zI + 1) * gridStepZ) + scroll + 15;
+            const scroll = (this.time * 0.8) % stepZ;
+            const zN = (zI * stepZ) + scroll + 10;
+            const zF = ((zI + 1) * stepZ) + scroll + 10;
 
-            // Opacity falls off with distance
-            const alpha = Math.max(0, 1.0 - (zNear / 200)) * (activityScale + 0.1);
-            if (alpha <= 0) continue;
+            // Opacity is stable by Z distance only
+            const alpha = Math.max(0, 1.0 - (zN / (rows * stepZ))) * 0.8;
+            if (alpha <= 0.05) continue;
 
             for (let xI = -cols/2; xI < cols/2; xI++) {
-                const x0 = xI * gridStepX;
-                const x1 = (xI + 1) * gridStepX;
+                const xL = xI * stepX;
+                const xR = (xI + 1) * stepX;
 
-                // Vertices of the quad
-                const v1 = this.project(x0, this.getDeformation(x0, zNear, activityScale, cloudEnv), zNear);
-                const v2 = this.project(x1, this.getDeformation(x1, zNear, activityScale, cloudEnv), zNear);
-                const v3 = this.project(x1, this.getDeformation(x1, zFar, activityScale, cloudEnv), zFar);
-                const v4 = this.project(x0, this.getDeformation(x0, zFar, activityScale, cloudEnv), zFar);
+                // Points of the mesh quad
+                const p1 = this.project(xL, this.getDeformation(xL, zN, activityScale, cloudEnv), zN);
+                const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv), zN);
+                const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv), zF);
+                const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv), zF);
 
-                // Skip if off-screen or too close
-                if (v1.y < this.vanishY) continue;
-
-                // 3. Render Quad
+                // Draw quad
                 ctx.beginPath();
-                ctx.moveTo(v1.x, v1.y);
-                ctx.lineTo(v2.x, v2.y);
-                ctx.lineTo(v3.x, v3.y);
-                ctx.lineTo(v4.x, v4.y);
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y);
+                ctx.lineTo(p4.x, p4.y);
                 ctx.closePath();
 
-                // Surface Fill (Ocean Texture)
-                ctx.fillStyle = `rgba(0, 139, 163, ${alpha * 0.15})`;
+                // Surface
+                ctx.fillStyle = `rgba(0, 139, 163, ${alpha * 0.2})`;
                 ctx.fill();
 
-                // Wireframe Edge
-                ctx.lineWidth = Math.min(2, v1.scale * 0.1);
-                const baseColor = (this.ripples.length > 0) ? this.ripples[0].color : '#00FFFF';
-                ctx.strokeStyle = baseColor + Math.floor(alpha * 180).toString(16).padStart(2, '0');
+                // Edges
+                ctx.lineWidth = Math.min(1.5, p1.scale * 0.05);
+                const edgeColor = (this.ripples.length > 0) ? this.ripples[0].color : '#00FFFF';
+                ctx.strokeStyle = edgeColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
                 ctx.stroke();
             }
         }
