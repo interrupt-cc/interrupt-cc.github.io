@@ -187,7 +187,7 @@ class StochasticPlayer {
                     }
                     
                     // Sync all slider defaults (Master Pressure, Delay, etc.)
-                    updateKnobs();
+                    this.syncDSP();
                     
                     this.togglePlay();
                 });
@@ -330,29 +330,10 @@ class StochasticPlayer {
         root.appendChild(drawer);
 
         // 3. Hardware Connectors
-        const updateKnobs = () => {
-            const wet = parseFloat(document.getElementById('knob-mix').value);
-            const dens = parseFloat(document.getElementById('knob-density').value);
-            const len = parseFloat(document.getElementById('knob-length').value);
-            const ent = parseFloat(document.getElementById('knob-entropy').value);
-            const delay = parseFloat(document.getElementById('knob-delay').value);
-            const feedback = parseFloat(document.getElementById('knob-feedback').value);
-            const alienDepth = parseFloat(document.getElementById('knob-alien-depth').value);
-            const alienMode = parseInt(document.getElementById('knob-alien-mode').value);
-            const masterPressure = parseFloat(document.getElementById('knob-master-pressure').value);
-            
-            if (window.STOCHASTIC_AUDIO) {
-                window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
-                window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8, alienMode, alienDepth);
-                window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
-                window.STOCHASTIC_AUDIO.setMasterPressure(masterPressure);
-            }
-        };
-
         ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode', 'knob-master-pressure'].forEach(id => {
             const el = document.getElementById(id);
-            if (el.tagName === 'SELECT') el.onchange = updateKnobs;
-            else el.oninput = updateKnobs;
+            if (el.tagName === 'SELECT') el.onchange = () => this.syncDSP();
+            else el.oninput = () => this.syncDSP();
         });
 
         document.getElementById('btn-mutate-alien').onclick = () => this.mutateAlien();
@@ -362,7 +343,7 @@ class StochasticPlayer {
             document.getElementById('knob-delay').value = 0.45;
             document.getElementById('knob-feedback').value = 0.6;
             document.getElementById('knob-master-pressure').value = 1.0;
-            updateKnobs();
+            this.syncDSP();
         };
 
         document.getElementById('btn-randomize').onclick = () => {
@@ -373,8 +354,28 @@ class StochasticPlayer {
             document.getElementById('knob-delay').value = (Math.random() * 1.5 + 0.1).toFixed(2);
             document.getElementById('knob-feedback').value = (Math.random() * 0.8 + 0.1).toFixed(2);
             // Note: master-pressure is specifically excluded from randomization per user request
-            updateKnobs();
+            this.syncDSP();
         };
+    }
+
+    syncDSP() {
+        // Collect hardware state from UI
+        const wet = parseFloat(document.getElementById('knob-mix')?.value || 0);
+        const dens = parseFloat(document.getElementById('knob-density')?.value || 0);
+        const len = parseFloat(document.getElementById('knob-length')?.value || 0.08);
+        const ent = parseFloat(document.getElementById('knob-entropy')?.value || 0.5);
+        const delay = parseFloat(document.getElementById('knob-delay')?.value || 0.45);
+        const feedback = parseFloat(document.getElementById('knob-feedback')?.value || 0.6);
+        const alienDepth = parseFloat(document.getElementById('knob-alien-depth')?.value || 0);
+        const alienMode = parseInt(document.getElementById('knob-alien-mode')?.value || 0);
+        const masterPressure = parseFloat(document.getElementById('knob-master-pressure')?.value || 1.0);
+        
+        if (window.STOCHASTIC_AUDIO) {
+            window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
+            window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8, alienMode, alienDepth);
+            window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
+            window.STOCHASTIC_AUDIO.setMasterPressure(masterPressure);
+        }
     }
 
     updateUI(trackPath) {
