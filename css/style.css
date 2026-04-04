@@ -105,8 +105,8 @@ body::before {
   background: inherit;
   border: inherit;
   box-shadow: inherit;
-  /* Only the bottom 1/8 slice */
-  clip-path: polygon(0 87.5%, 100% 87.5%, 100% 100%, 0 100%);
+  /* Only the bottom 1/64 slice (subtle tear) */
+  clip-path: polygon(0 98.4%, 100% 98.4%, 100% 100%, 0 100%);
   /* Shift even more than the main frame for the "tear" feel - Now using lingering tear + stochastic offset */
   transform: translateX(calc(var(--crt-tear, 0) * 150px + var(--crt-tear-rand, 0) * 1px));
   z-index: -1;
@@ -131,8 +131,8 @@ body::before {
   /* Replace solid background inheritance with translucent signal refraction */
   background: rgba(0, 229, 255, 0.05);
   backdrop-filter: blur(3px) contrast(1.5) hue-rotate(15deg);
-  /* Only the bottom 1/8 slice of the CONTENT area */
-  clip-path: polygon(0 87.5%, 100% 87.5%, 100% 100%, 0 100%);
+  /* Only the bottom 1/64 slice of the CONTENT area */
+  clip-path: polygon(0 98.4%, 100% 98.4%, 100% 100%, 0 100%);
   transform: translateX(calc(var(--crt-tear, 0) * 80px + var(--crt-tear-rand, 0) * 0.5 * 1px));
   z-index: 1; /* Below the content */
   pointer-events: none;
