@@ -246,6 +246,12 @@ class StochasticPlayer {
                 <input type="range" id="knob-feedback" min="0" max="0.95" step="0.01" value="0.6">
             </div>
 
+            <div style="font-size: 0.7rem; color: var(--accent-color); letter-spacing: 2px; margin: 15px 0 10px 0;">[ MASTERING & NORMALIZATION ]</div>
+            <div class="knob-row" title="Manual loudness pressure. Boosts input into the compressor.">
+                <label>MASTER_PRESSURE</label>
+                <input type="range" id="knob-master-pressure" min="1.0" max="3.0" step="0.01" value="1.0">
+            </div>
+
             <div style="font-size: 0.7rem; color: var(--accent-color); letter-spacing: 2px; margin: 15px 0 10px 0;">[ ALIEN_INTERRUPTION ]</div>
             <div class="knob-row">
                 <label>MOD_DEPTH</label>
@@ -329,15 +335,17 @@ class StochasticPlayer {
             const feedback = parseFloat(document.getElementById('knob-feedback').value);
             const alienDepth = parseFloat(document.getElementById('knob-alien-depth').value);
             const alienMode = parseInt(document.getElementById('knob-alien-mode').value);
+            const masterPressure = parseFloat(document.getElementById('knob-master-pressure').value);
             
             if (window.STOCHASTIC_AUDIO) {
                 window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
                 window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8, alienMode, alienDepth);
                 window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
+                window.STOCHASTIC_AUDIO.setMasterPressure(masterPressure);
             }
         };
 
-        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode'].forEach(id => {
+        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode', 'knob-master-pressure'].forEach(id => {
             const el = document.getElementById(id);
             if (el.tagName === 'SELECT') el.onchange = updateKnobs;
             else el.oninput = updateKnobs;
@@ -349,6 +357,7 @@ class StochasticPlayer {
             ['knob-mix', 'knob-density'].forEach(id => document.getElementById(id).value = 0);
             document.getElementById('knob-delay').value = 0.45;
             document.getElementById('knob-feedback').value = 0.6;
+            document.getElementById('knob-master-pressure').value = 1.0;
             updateKnobs();
         };
 
@@ -359,6 +368,7 @@ class StochasticPlayer {
             document.getElementById('knob-entropy').value = (Math.random() * 3.0).toFixed(2);
             document.getElementById('knob-delay').value = (Math.random() * 1.5 + 0.1).toFixed(2);
             document.getElementById('knob-feedback').value = (Math.random() * 0.8 + 0.1).toFixed(2);
+            // Note: master-pressure is specifically excluded from randomization per user request
             updateKnobs();
         };
     }

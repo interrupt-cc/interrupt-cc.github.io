@@ -8,8 +8,11 @@ class StochasticAudioController {
     constructor() {
         this.ctx = null;
         this.synthNode = null;
-        this.delayNode = null; // High-level reference
+        this.delayNode = null; 
         this.feedbackNode = null; 
+        this.masterCompressor = null;
+        this.masterGain = null;
+        this.masterAnalyser = null;
         this.isReady = false;
         
         // Reusable array for zero allocation GC-free message passing
@@ -266,6 +269,19 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
 
             delay.connect(this.ctx.destination);
 
+            // --- MASTERING & NORMALIZATION STAGE ---
+            this.masterAnalyser = this.ctx.createAnalyser();
+            this.masterAnalyser.fftSize = 512;
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 1.0;
+            
+            this.masterCompressor = this.ctx.createDynamicsCompressor();
+            this.masterCompressor.threshold.value = -18;
+            this.masterCompressor.knee.value = 30;
+            this.masterCompressor.ratio.value = 3;
+            this.masterCompressor.attack.value = 0.05;
+            this.masterCompressor.release.value = 0.25;
+
             this.isReady = true;
             console.log('[AUDIO_CORE]: Thread bridge and Dub FX Engine established.');
         } catch (e) {
@@ -317,14 +333,23 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         try {
             this.playerSource = this.ctx.createMediaElementSource(audioElement);
             
-            // Direct playback hooks into the dryGain stage
-            this.playerSource.connect(this.dryGain);
+            // --- INSERT MASTERING CHAIN ---
+            // Source -> Analyser (Detect) -> Gain (Normalise) -> Compressor (Master)
+            this.playerSource.connect(this.masterAnalyser);
+            this.masterAnalyser.connect(this.masterGain);
+            this.masterGain.connect(this.masterCompressor);
+
+            // Output from Mastering to both Dry and Wet stages
+            this.masterCompressor.connect(this.dryGain);
             this.dryGain.connect(this.ctx.destination);
             
-            // Connect to Left channel of the granular merger
             if (this.merger) {
-                this.playerSource.connect(this.merger, 0, 0); 
+                this.masterCompressor.connect(this.merger, 0, 0); 
             }
+
+            // Start the Auto-Loudness Intelligence Loop (10Hz)
+            this.startNormalizer();
+
             this.playerRouted = true;
             console.log('[AUDIO_CORE]: MediaElementSourceNode captured for granular processing.');
         } catch (e) {
@@ -393,6 +418,40 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         msg[6] = alienMode;
         msg[7] = alienDepth;
         this.granularNode.port.postMessage(msg);
+    }
+
+    startNormalizer() {
+        if (this._normalizerInterval) return;
+        
+        const data = new Float32Array(this.masterAnalyser.fftSize);
+        let currentScale = 1.0;
+        
+        this._normalizerInterval = setInterval(() => {
+            if (!this.isReady || !this.masterAnalyser) return;
+            
+            // 1. Detect RMS (Loudness)
+            this.masterAnalyser.getFloatTimeDomainData(data);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+            const rms = Math.sqrt(sum / data.length);
+            
+            // 2. Normalization Logic (Target ~-15dB RMS)
+            const target = 0.18; // approx -15dBFS
+            if (rms > 0.05) { // Only adjust if signal is actually present
+                const diff = target / (rms + 0.001);
+                // Very slow convergence to prevent "pumping" (3-second average)
+                currentScale += (diff - currentScale) * 0.02;
+                this.masterGain.gain.setTargetAtTime(currentScale, this.ctx.currentTime, 0.5);
+            }
+        }, 100);
+    }
+
+    setMasterPressure(val) {
+        if (!this.isReady || !this.masterCompressor) return;
+        // Drive more signal into the compressor threshold to increase "Mastering Density"
+        // 1.0 (Normal) to 3.0 (Crushed/Loud)
+        const dbOffset = (val - 1.0) * 12; // up to 12dB boost
+        this.masterCompressor.threshold.setTargetAtTime(-18 - dbOffset, this.ctx.currentTime, 0.2);
     }
 }
 
