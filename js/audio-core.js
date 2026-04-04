@@ -138,14 +138,16 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
         if (!output || !output[0]) return true;
         const channelCount = output.length;
         
-        // 1. Record primary music continuously into the ring buffer
-        if (input && input[0]) {
-            for (let i = 0; i < input[0].length; ++i) {
-                let mix = input[0][i];
-                if (input[1]) mix = (mix + input[1][i]) * 0.5;
-                this.ringBuffer[this.writePtr] = mix;
-                this.writePtr = (this.writePtr + 1) % this.bufferSize;
-            }
+    process(inputs, outputs, parameters) {
+        const input = inputs[0]; // Stereo multiplexed: [0]=Music, [1]=Alien
+        const output = outputs[0];
+        if (!output || !output[0] || !input || !input[0]) return true;
+        const channelCount = output.length;
+        
+        // 1. Record primary music (Channel 0) continuously into the ring buffer
+        for (let i = 0; i < input[0].length; ++i) {
+            this.ringBuffer[this.writePtr] = input[0][i];
+            this.writePtr = (this.writePtr + 1) % this.bufferSize;
         }
 
         // 2. Grain Spawning Logic
@@ -161,8 +163,8 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
         for (let i = 0; i < output[0].length; ++i) {
             let outSample = 0;
             
-            // Capture current alien sample for modulation
-            const alienSample = (alien && alien[0]) ? alien[0][i] : 0;
+            // Capture alien modulator from Channel 1
+            const alienSample = (input[1]) ? input[1][i] : 0;
             
             for (let g = this.grains.length - 1; g >= 0; g--) {
                 let grain = this.grains[g];
@@ -216,10 +218,14 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             this.synthNode = new AudioWorkletNode(this.ctx, 'stochastic-synth-v1');
             
             this.granularNode = new AudioWorkletNode(this.ctx, 'stochastic-granulator', {
-                numberOfInputs: 2,
+                numberOfInputs: 1, // Single stereo-multiplexed input
                 numberOfOutputs: 1,
                 outputChannelCount: [2]
             });
+            
+            // Stereo Merger: Music = Ch0 (L), Alien = Ch1 (R)
+            this.merger = this.ctx.createChannelMerger(2);
+            this.merger.connect(this.granularNode);
             
             URL.revokeObjectURL(blobUrl); // Cleanup pseudo-file
             
@@ -315,9 +321,9 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             this.playerSource.connect(this.dryGain);
             this.dryGain.connect(this.ctx.destination);
             
-            // Mirrored audio continually writes to the Granular capture ring buffer
-            if (this.granularNode) {
-                this.playerSource.connect(this.granularNode);
+            // Connect to Left channel of the granular merger
+            if (this.merger) {
+                this.playerSource.connect(this.merger, 0, 0); 
             }
             this.playerRouted = true;
             console.log('[AUDIO_CORE]: MediaElementSourceNode captured for granular processing.');
@@ -327,17 +333,12 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
     }
 
     routeAlien(audioElement) {
-        if (!this.ctx || !this.granularNode) return;
+        if (!this.ctx || !this.merger) return;
         try {
-            // Check for file protocol capture block
-            if (window.location.protocol === 'file:') {
-                console.warn('[AUDIO_CORE]: Alien Modulator blocked on local file:// protocol.');
-                return;
-            }
             this.alienSource = this.ctx.createMediaElementSource(audioElement);
-            // Connect to input 1 of the granulator (input 0 is the main song)
-            this.alienSource.connect(this.granularNode, 0, 1);
-            console.log('[AUDIO_CORE]: Alien Interruption stream connected to modulation input.');
+            // Connect to Right channel of the granular merger
+            this.alienSource.connect(this.merger, 0, 1);
+            console.log('[AUDIO_CORE]: Alien stream multiplexed to Granular channel 1.');
         } catch (e) {
             console.warn('[AUDIO_CORE]: Alien Routing failed.', e);
         }
