@@ -39,6 +39,10 @@ class HorizonGrid {
         this.palette = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
         this.colorIdx = 0;
         this.time = 0;
+        
+        // Structural Wave Params
+        this.globalWavelength = 0.15;
+        this.edgeDamping = 0.0; // 0=Ribbon, 1+=Captured/Contained
 
         window.addEventListener('resize', () => this.onResize());
         this.animate();
@@ -68,23 +72,29 @@ class HorizonGrid {
         };
     }
 
-    getDeformation(x, z, activityScale, cloudEnv) {
+    getDeformation(x, z, activityScale, cloudEnv, maxZ) {
         let yOffset = 0;
         
-        // 1. Permanent 'Idol Swell' (Baseline ocean feel)
+        // 1. Permanent 'Idol Swell'
         yOffset += Math.sin(z * 0.05 - this.time * 0.02) * 8;
         
         // 2. Audio-active ripples
         this.ripples.forEach(r => {
             const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
-            const phi = r.wavelength * rx - (this.time * 0.12);
+            // Combine ripple-local wavelength with global multiplier
+            const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
             yOffset += Math.sin(phi) * r.getAmplitude() * activityScale;
         });
 
-        // 3. Cloud-peak Jitter (Scaled to Envelope)
+        // 3. Cloud-peak Jitter
         const jitter = (Math.random() - 0.5) * 5.0 * cloudEnv;
         
-        return yOffset + jitter;
+        // 4. Edge Damping (Containment)
+        // sin window from 0 to 1 over the z-depth
+        const zNorm = Math.min(1.0, Math.max(0, (z - 10) / (maxZ - 10)));
+        const window = Math.pow(Math.sin(zNorm * Math.PI), this.edgeDamping);
+        
+        return (yOffset + jitter) * window;
     }
 
     animate() {
@@ -122,15 +132,17 @@ class HorizonGrid {
             const alpha = Math.max(0, 1.0 - (zN / (rows * stepZ))) * 0.8;
             if (alpha <= 0.05) continue;
 
+            const maxZ = (rows * stepZ) + 10;
+
             for (let xI = -cols/2; xI < cols/2; xI++) {
                 const xL = xI * stepX;
                 const xR = (xI + 1) * stepX;
 
                 // Points of the mesh quad
-                const p1 = this.project(xL, this.getDeformation(xL, zN, activityScale, cloudEnv), zN);
-                const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv), zN);
-                const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv), zF);
-                const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv), zF);
+                const p1 = this.project(xL, this.getDeformation(xL, zN, activityScale, cloudEnv, maxZ), zN);
+                const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv, maxZ), zN);
+                const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv, maxZ), zF);
+                const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv, maxZ), zF);
 
                 // Draw quad
                 ctx.beginPath();

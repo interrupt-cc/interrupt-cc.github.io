@@ -271,6 +271,17 @@ class StochasticPlayer {
             </div>
             <button id="btn-mutate-alien" class="sp-btn" style="margin-top: 5px;">MUTATE_CARRIER_SOURCE</button>
 
+            <div style="font-size: 0.7rem; color: var(--accent-color); letter-spacing: 2px; margin: 15px 0 10px 0;">[ HORIZON_WAVE_STRUCT ]</div>
+            <div class="knob-row">
+                <label>WAVE_GEOMETRY</label>
+                <input type="range" id="knob-wave-freq" min="0.05" max="0.5" step="0.01" value="0.15">
+            </div>
+            <div class="knob-row">
+                <label>EDGE_DAMPING</label>
+                <input type="range" id="knob-edge-damping" min="0" max="2.0" step="0.01" value="0">
+            </div>
+            <button id="btn-trigger-ripple" class="sp-btn" style="margin-top: 5px;">MANUAL_RESONANCE_TRIGGER</button>
+
             <div style="display: flex; gap: 5px; margin-top: 15px;">
                 <button id="btn-randomize" class="sp-btn">STOCH_RANDOMIZE</button>
                 <button id="btn-reset" class="sp-btn">SIGNAL_RESET</button>
@@ -330,13 +341,17 @@ class StochasticPlayer {
         root.appendChild(drawer);
 
         // 3. Hardware Connectors
-        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode', 'knob-master-pressure'].forEach(id => {
+        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode', 'knob-master-pressure', 'knob-wave-freq', 'knob-edge-damping'].forEach(id => {
             const el = document.getElementById(id);
+            if (!el) return;
             if (el.tagName === 'SELECT') el.onchange = () => this.syncDSP();
             else el.oninput = () => this.syncDSP();
         });
 
         document.getElementById('btn-mutate-alien').onclick = () => this.mutateAlien();
+        document.getElementById('btn-trigger-ripple').onclick = () => {
+            if (window.HORIZON) window.HORIZON.triggerRipple();
+        };
 
         document.getElementById('btn-reset').onclick = () => {
             ['knob-mix', 'knob-density'].forEach(id => document.getElementById(id).value = 0);
@@ -353,6 +368,8 @@ class StochasticPlayer {
             document.getElementById('knob-entropy').value = (Math.random() * 3.0).toFixed(2);
             document.getElementById('knob-delay').value = (Math.random() * 1.5 + 0.1).toFixed(2);
             document.getElementById('knob-feedback').value = (Math.random() * 0.8 + 0.1).toFixed(2);
+            document.getElementById('knob-wave-freq').value = (Math.random() * 0.4 + 0.05).toFixed(2);
+            document.getElementById('knob-edge-damping').value = (Math.random() * 1.5).toFixed(2);
             // Note: master-pressure is specifically excluded from randomization per user request
             this.syncDSP();
         };
@@ -366,15 +383,20 @@ class StochasticPlayer {
         const ent = parseFloat(document.getElementById('knob-entropy')?.value || 0.5);
         const delay = parseFloat(document.getElementById('knob-delay')?.value || 0.45);
         const feedback = parseFloat(document.getElementById('knob-feedback')?.value || 0.6);
-        const alienDepth = parseFloat(document.getElementById('knob-alien-depth')?.value || 0);
         const alienMode = parseInt(document.getElementById('knob-alien-mode')?.value || 0);
         const masterPressure = parseFloat(document.getElementById('knob-master-pressure')?.value || 1.0);
+        const waveFreq = parseFloat(document.getElementById('knob-wave-freq')?.value || 0.15);
+        const edgeDamping = parseFloat(document.getElementById('knob-edge-damping')?.value || 0);
         
         if (window.STOCHASTIC_AUDIO) {
             window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
             window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8, alienMode, alienDepth);
             window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
             window.STOCHASTIC_AUDIO.setMasterPressure(masterPressure);
+        }
+        if (window.HORIZON) {
+            window.HORIZON.globalWavelength = waveFreq;
+            window.HORIZON.edgeDamping = edgeDamping;
         }
     }
 
