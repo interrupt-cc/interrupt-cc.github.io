@@ -73,14 +73,128 @@ class StochasticSynthProcessor extends AudioWorkletProcessor {
     }
 }
 registerProcessor('stochastic-synth-v1', StochasticSynthProcessor);
-            `;
+
+// --- GENERATIVE GRANULAR PROCESSOR ---
+class StochasticGranulatorProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.sampleRate = 48000;
+        // 4 Second sliding capture ring buffer
+        this.bufferSize = this.sampleRate * 4; 
+        this.ringBuffer = new Float32Array(this.bufferSize);
+        this.writePtr = 0;
+        
+        // Grain scheduling
+        this.grains = [];
+        this.framesSinceLastGrain = 0;
+        
+        // Cloud Envelope Parameters
+        this.active = false;
+        this.density = 0;      // 0 to 1. Probability of spawning a grain per frame
+        this.grainLength = 0;  // in frames
+        this.randomness = 0;   // offset distance
+        this.masterGain = 0;   // cloud volume
+        
+        this.port.onmessage = (e) => {
+            const data = e.data; // Float32Array: [type, active, density, length, randomness, gain]
+            if (data[0] === 4) { // Macro Env Payload
+                this.active = data[1] > 0;
+                this.density = data[2];
+                this.grainLength = data[3] * this.sampleRate; // convert seconds to frames
+                this.randomness = data[4] * this.sampleRate;
+                this.masterGain = data[5];
+            }
+        };
+    }
+
+    spawnGrain() {
+        // Read position is slightly behind the write pointer, plus stochastic offset
+        let readPtr = this.writePtr - Math.floor(Math.random() * this.randomness) - 4800; // at least 100ms behind
+        if (readPtr < 0) readPtr += this.bufferSize;
+        
+        this.grains.push({
+            position: 0,
+            readPtr: readPtr,
+            length: this.grainLength,
+            speed: 0.95 + Math.random() * 0.1 // slight pitch drift
+        });
+    }
+
+    process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+        if (!output || !output[0]) return true;
+        const channelCount = output.length;
+        
+        // 1. Record incoming audio continuously into the ring buffer
+        if (input && input[0]) {
+            for (let i = 0; i < input[0].length; ++i) {
+                // Mix stereo to mono for the granular capture
+                let mix = input[0][i];
+                if (input[1]) mix = (mix + input[1][i]) * 0.5;
+                
+                this.ringBuffer[this.writePtr] = mix;
+                this.writePtr = (this.writePtr + 1) % this.bufferSize;
+            }
+        }
+
+        // 2. Grain Spawning Logic
+        if (this.active && this.masterGain > 0.01) {
+            for (let i = 0; i < output[0].length; ++i) {
+                if (Math.random() < this.density) {
+                    this.spawnGrain();
+                }
+            }
+        }
+
+        // 3. Process Active Grains (Hanning Window)
+        for (let i = 0; i < output[0].length; ++i) {
+            let outSample = 0;
             
+            for (let g = this.grains.length - 1; g >= 0; g--) {
+                let grain = this.grains[g];
+                
+                // Read from ring buffer
+                let rIdx = Math.floor(grain.readPtr) % this.bufferSize;
+                let sample = this.ringBuffer[rIdx];
+                
+                // Hanning Window envelope (bell curve matching the grain length)
+                let windowEnv = 0.5 * (1 - Math.cos((2 * Math.PI * grain.position) / grain.length));
+                
+                outSample += sample * windowEnv;
+                
+                // Advance grain state
+                grain.position += 1;
+                grain.readPtr += grain.speed;
+                
+                if (grain.position >= grain.length) {
+                    this.grains.splice(g, 1); // Kill dead grains
+                }
+            }
+            
+            // Output mixing
+            outSample *= this.masterGain;
+            outSample = Math.max(-1.0, Math.min(1.0, outSample)); // strict clip
+            
+            for (let channel = 0; channel < channelCount; ++channel) { 
+                output[channel][i] = outSample; 
+            }
+        }
+        
+        return true;
+    }
+}
+registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
+            `;            
             // Build pseudo-file URL
             const blob = new Blob([workletCode], { type: 'application/javascript' });
             const blobUrl = URL.createObjectURL(blob);
             
             await this.ctx.audioWorklet.addModule(blobUrl);
             this.synthNode = new AudioWorkletNode(this.ctx, 'stochastic-synth-v1');
+            
+            this.granularNode = new AudioWorkletNode(this.ctx, 'stochastic-granulator');
+            
             URL.revokeObjectURL(blobUrl); // Cleanup pseudo-file
             
             // --- DUB TECHNO SPATIAL FX CHAIN ---
@@ -104,6 +218,10 @@ registerProcessor('stochastic-synth-v1', StochasticSynthProcessor);
             this.synthNode.connect(this.ctx.destination);
             this.synthNode.connect(delay);
             delay.connect(this.ctx.destination);
+            
+            // Granular Routing: Granulator -> Heavy Delay -> Destination
+            this.granularNode.connect(this.ctx.destination);
+            this.granularNode.connect(delay); // Tap into existing Dub Echo chain
 
             this.isReady = true;
             console.log('[AUDIO_CORE]: Thread bridge and Dub FX Engine established.');
@@ -140,6 +258,60 @@ registerProcessor('stochastic-synth-v1', StochasticSynthProcessor);
     setChordVolume(vol) {
         // [ Type 3: Gate Master Chord Volume ]
         this.sendEvent(3, vol, 0);
+    }
+
+    // --- PLAYBACK ROUTING AND GENERATOR SEQUENCER ---
+    
+    routePlayer(audioElement) {
+        if (!this.ctx || this.playerRouted) return;
+        this.playerSource = this.ctx.createMediaElementSource(audioElement);
+        // Clean audio goes to destination
+        this.playerSource.connect(this.ctx.destination);
+        // Mirrored audio continually writes to the Granular capture ring buffer
+        if (this.granularNode) {
+            this.playerSource.connect(this.granularNode);
+        }
+        this.playerRouted = true;
+    }
+
+    async launchGranularCloud() {
+        if (!this.granularNode || this.cloudLock) return;
+        this.cloudLock = true;
+        
+        let msg = new Float32Array(6);
+        msg[0] = 4; // Type 4
+        msg[1] = 1; // Active
+        
+        const updateDSP = (density, len, rand, gain) => {
+            msg[2] = density; msg[3] = len; msg[4] = rand; msg[5] = gain;
+            this.granularNode.port.postMessage(msg);
+        };
+        
+        // Procedural Macro Envelope generating a slow physical swell over 15 seconds
+        let phase = 0;
+        const interval = setInterval(() => {
+            phase += 0.05; // ~20 seconds full orbit to 1.0
+            
+            if (phase >= 1.0) {
+                clearInterval(interval);
+                updateDSP(0, 0, 0, 0); // Shutdown
+                msg[1] = 0; this.granularNode.port.postMessage(msg); // Kill active flag
+                this.cloudLock = false;
+                return;
+            }
+            
+            // Envelope curves
+            let env = Math.sin(phase * Math.PI); // Smooth attack/decay curve
+            
+            // Calculate stochastic parameters based on env
+            let density = env * 0.008; // extremely dense grains at peak
+            let length = 0.05 + Math.random() * (env * 0.2); // 50ms to 250ms grains
+            let randomness = env * 2.5; // up to 2.5 seconds read divergence at peak
+            let volume = env * 0.4;
+            
+            updateDSP(density, length, randomness, volume);
+            
+        }, 100); // 10hz update rate
     }
 }
 
