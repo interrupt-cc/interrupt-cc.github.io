@@ -54,7 +54,11 @@ class HorizonGrid {
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.vanishX = this.width / 2;
-        this.vanishY = this.height * 0.65; // Lower horizon for fly-over feel
+        this.vanishY = this.height / 2; // Center horizon
+        
+        // Calculate ground plane world-Y needed to hit the bottom of screen at Z=10
+        this.zStart = 10;
+        this.groundY = - (this.height - this.vanishY) * this.zStart / this.focalLength;
     }
 
     triggerRipple() {
@@ -91,10 +95,10 @@ class HorizonGrid {
         
         // 4. Edge Damping (Containment)
         // sin window from 0 to 1 over the z-depth
-        const zNorm = Math.min(1.0, Math.max(0, (z - 10) / (maxZ - 10)));
+        const zNorm = Math.min(1.0, Math.max(0, (z - this.zStart) / (maxZ - this.zStart)));
         const window = Math.pow(Math.sin(zNorm * Math.PI), this.edgeDamping);
         
-        return (yOffset + jitter) * window;
+        return this.groundY + (yOffset + jitter) * window;
     }
 
     animate() {
@@ -125,14 +129,14 @@ class HorizonGrid {
 
         for (let zI = 0; zI < rows - 1; zI++) {
             const scroll = (this.time * 0.8) % stepZ;
-            const zN = (zI * stepZ) + scroll + 10;
-            const zF = ((zI + 1) * stepZ) + scroll + 10;
+            const zN = (zI * stepZ) + scroll + this.zStart;
+            const zF = ((zI + 1) * stepZ) + scroll + this.zStart;
 
             // Opacity is stable by Z distance only
             const alpha = Math.max(0, 1.0 - (zN / (rows * stepZ))) * 0.8;
             if (alpha <= 0.05) continue;
 
-            const maxZ = (rows * stepZ) + 10;
+            const maxZ = (rows * stepZ) + this.zStart;
 
             for (let xI = -cols/2; xI < cols/2; xI++) {
                 const xL = xI * stepX;
