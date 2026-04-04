@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const targetDir = 'MI+OM+RM';
-const outputFile = 'js/tracklist.json';
+const outputFile = 'js/tracklist.js';
 
 // Recursively find .m4a files
 function findAudioFiles(dir, fileList = []) {
@@ -42,5 +42,10 @@ if (tracks.length === 0) {
     console.warn(`[TRACK_WARNING] Null yield. No .m4a arrays discovered in the ${targetDir} directory structure.`);
 }
 
-fs.writeFileSync(outputFile, JSON.stringify(tracks, null, 2));
+// Convert JSON array into a pure ES6 Window global to bypass file:// CORS fetches!
+const jsPayload = `// Auto-generated STOCHASTIC_AUDIO manifest
+window.STOCHASTIC_TRACKLIST = ${JSON.stringify(tracks, null, 2)};
+`;
+
+fs.writeFileSync(outputFile, jsPayload);
 console.log(`[PASS] Deterministic payload mapped. Compiled ${tracks.length} track paths to manifest: ${outputFile}`);

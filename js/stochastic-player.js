@@ -19,10 +19,8 @@ class StochasticPlayer {
 
     async init() {
         try {
-            // Fetch dynamically built manifest
-            // Assuming index.html (root) holds the player, path is relative to root
-            const response = await fetch('js/tracklist.json');
-            this.tracklist = await response.json();
+            // Pull dynamically compiled tracking manifest bound at window startup
+            this.tracklist = window.STOCHASTIC_TRACKLIST || [];
             
             if (!this.tracklist || this.tracklist.length === 0) {
                 console.warn('[AUDIO_PLAYER] Tracklist manifest empty.');
