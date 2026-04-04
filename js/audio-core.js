@@ -14,6 +14,7 @@ class StochasticAudioController {
         this.masterGain = null;
         this.masterAnalyser = null;
         this.currentRMS = 0;
+        this.currentCloudEnv = 0;
         this.isReady = false;
         
         // Reusable array for zero allocation GC-free message passing
@@ -378,6 +379,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             
             if (phase >= 1.0) {
                 clearInterval(interval);
+                this.currentCloudEnv = 0;
                 this.updateGranularParams(0, 0, 0, 0, 0); // Shutdown
                 this.cloudLock = false;
                 return;
@@ -385,6 +387,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             
             // Envelope curves
             let env = Math.sin(phase * Math.PI); // Smooth attack/decay curve
+            this.currentCloudEnv = env;
             
             // Calculate stochastic parameters based on env
             let density = env * 0.008; // extremely dense grains at peak

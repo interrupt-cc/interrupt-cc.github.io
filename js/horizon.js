@@ -62,37 +62,44 @@ class HorizonGrid {
         ctx.fillStyle = 'rgba(8, 9, 10, 0.15)'; // Match --bg-color
         ctx.fillRect(0, 0, w, h);
 
-        // 2. Fetch real-time RMS for 'Activity Calmer/Wilder' scaling
+        // 2. Fetch real-time RMS + Cloud Envelope for 'Storm' scaling
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
-        const activityScale = Math.min(1.0, rms * 5.0); // Amplify for visual impact
+        const cloudEnv = window.STOCHASTIC_AUDIO?.currentCloudEnv || 0;
+        
+        // Activity scale: RMS is baseline, CloudEnv is a massive multiplier
+        const activityScale = (rms * 4.0) + (cloudEnv * 3.5);
         
         ctx.lineWidth = 1;
 
         // 3. Render Perspective Mesh
-        const rows = 20;
-        const cols = 26;
+        const rows = 24;
+        const cols = 28;
         
         // Z-axis from background to foreground
         for (let zI = 0; zI < rows; zI++) {
-            const z = (zI + (this.time * 0.5) % 1) / rows; // Movement scrolling
+            const zPct = zI / rows;
+            const z = (zI + (this.time * 0.4) % 1) / rows; // Movement scrolling
             const screenY = this.vanishY + z * (h / 2);
             
             // Horizontal Line
             ctx.beginPath();
             let first = true;
             for (let xI = -cols/2; xI <= cols/2; xI++) {
-                const worldX = xI * (w / 10);
+                const worldX = xI * (w / 12);
                 const projectedX = this.vanishX + (worldX * z);
                 
-                // Add Ripple + Acid Frying deformation
+                // Add Ripple + Cloud Storm deformation
                 let yOffset = 0;
                 this.ripples.forEach(r => {
-                    const dist = Math.sqrt(xI * xI + (zI - 10) * (zI - 10));
-                    yOffset += Math.sin(dist - r.age) * (20 * activityScale) * Math.exp(-r.age * 0.1);
+                    const dist = Math.sqrt(xI * xI + (zI - 12) * (zI - 12));
+                    // Base amplitude (50px) scaled by activity
+                    yOffset += Math.sin(dist - r.age) * (50 * activityScale) * Math.exp(-r.age * 0.08);
                 });
 
-                // Acid Jitter
-                const jitter = (Math.random() - 0.5) * 2 * activityScale;
+                // Acid Jitter (Spectal Dissolution during clouds)
+                const jitterIntensity = 2.0 * activityScale * (1.0 + cloudEnv * 4.0);
+                const jitter = (Math.random() - 0.5) * jitterIntensity;
+                
                 const finalX = projectedX + jitter;
                 const finalY = screenY + yOffset + jitter;
 
@@ -100,7 +107,9 @@ class HorizonGrid {
                 else ctx.lineTo(finalX, finalY);
                 first = false;
             }
-            ctx.strokeStyle = `rgba(0, 229, 255, ${z * 0.4 * activityScale + 0.1})`;
+            // Glow intensity increases with cloud activity
+            const alpha = (z * 0.5 * activityScale) + 0.05;
+            ctx.strokeStyle = `rgba(0, 229, 255, ${Math.min(0.8, alpha)})`;
             ctx.stroke();
         }
 
@@ -110,17 +119,18 @@ class HorizonGrid {
             let first = true;
             for (let zI = 0; zI < rows; zI++) {
                 const z = zI / rows;
-                const worldX = xI * (w / 10);
+                const worldX = xI * (w / 12);
                 const projectedX = this.vanishX + (worldX * z);
                 const screenY = this.vanishY + z * (h / 2);
                 
                 let yOffset = 0;
                 this.ripples.forEach(r => {
                     const dist = Math.sqrt(xI * xI + (zI - 10) * (zI - 10));
-                    yOffset += Math.sin(dist - r.age) * (20 * activityScale) * Math.exp(-r.age * 0.1);
+                    yOffset += Math.sin(dist - r.age) * (50 * activityScale) * Math.exp(-r.age * 0.08);
                 });
 
-                const jitter = (Math.random() - 0.5) * 1.5 * activityScale;
+                const jitterIntensity = 1.5 * activityScale * (1.0 + cloudEnv * 2.0);
+                const jitter = (Math.random() - 0.5) * jitterIntensity;
                 const finalX = projectedX + jitter;
                 const finalY = screenY + yOffset + jitter;
 
@@ -128,9 +138,10 @@ class HorizonGrid {
                 else ctx.lineTo(finalX, finalY);
                 first = false;
             }
-            // CMYK selection logic for vertical beams (Acid trip)
-            const color = this.ripples.length > 0 ? this.ripples[0].color : '#00FFFF';
-            ctx.strokeStyle = color + '22'; // low opacity glow
+            // Fade-in color from ripples + cloud peaks
+            const baseColor = this.ripples.length > 0 ? this.ripples[0].color : '#00FFFF';
+            const rippleAlpha = Math.min(1.0, activityScale * 0.4);
+            ctx.strokeStyle = baseColor + Math.floor(rippleAlpha * 255).toString(16).padStart(2, '0');
             ctx.stroke();
         }
 
