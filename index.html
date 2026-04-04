@@ -10,6 +10,7 @@
 </head>
 
 <body>
+    <canvas id="horizon-grid" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; pointer-events: none; opacity: 0.6;"></canvas>
     <canvas id="crt-static"></canvas>
     <div class="gutter">
         <header>
@@ -186,6 +187,10 @@
         }
         triggerSpike();
     </script>
+    <script src="js/horizon.js"></script>
+    <script src="js/audio-core.js"></script>
+    <script src="js/tracklist.js"></script>
+    <script src="js/stochastic-player.js"></script>
 </body>
 
 </html>

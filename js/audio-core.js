@@ -13,6 +13,7 @@ class StochasticAudioController {
         this.masterCompressor = null;
         this.masterGain = null;
         this.masterAnalyser = null;
+        this.currentRMS = 0;
         this.isReady = false;
         
         // Reusable array for zero allocation GC-free message passing
@@ -367,6 +368,9 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         if (!this.granularNode || this.cloudLock) return;
         this.cloudLock = true;
         
+        // Trigger a visual ripple on the Horizon Grid
+        if (window.HORIZON) window.HORIZON.triggerRipple();
+        
         // Procedural Macro Envelope generating a slow physical swell over 15 seconds
         let phase = 0;
         const interval = setInterval(() => {
@@ -428,6 +432,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             let sum = 0;
             for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
             const rms = Math.sqrt(sum / data.length);
+            this.currentRMS = rms;
             
             // 2. Normalization Logic (Target ~-15dB RMS)
             const target = 0.18; // approx -15dBFS
