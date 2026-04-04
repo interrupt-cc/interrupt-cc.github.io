@@ -220,14 +220,16 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             this.dryGain.gain.value = 1.0;
             this.wetGain.gain.value = 0.0;
 
-            // Master routing: Synth -> Destination & Synth -> Delay -> Destination
+            // Synthesis Routing: Synth -> Destination & Synth -> Delay -> Destination
             this.synthNode.connect(this.ctx.destination);
             this.synthNode.connect(delay);
-            // delay.connect(this.ctx.destination); // Moved below
             
-            // Granular Routing: Granulator -> Heavy Delay -> Destination
-            this.granularNode.connect(this.ctx.destination);
-            this.granularNode.connect(delay); // Tap into existing Dub Echo chain
+            // Granular Routing: Granular -> WetGain -> Destination & Delay
+            this.granularNode.connect(this.wetGain);
+            this.wetGain.connect(this.ctx.destination);
+            this.wetGain.connect(delay); 
+
+            delay.connect(this.ctx.destination);
 
             this.isReady = true;
             console.log('[AUDIO_CORE]: Thread bridge and Dub FX Engine established.');

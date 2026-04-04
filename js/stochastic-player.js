@@ -142,15 +142,16 @@ class StochasticPlayer {
             }
 
             // Unlocks AudioContext exactly once
-            if (window.STOCHASTIC_AUDIO) window.STOCHASTIC_AUDIO.init();
-            
-            // Route HTML5 Audio through the WebAudio Graph for capture
-            if (!this.sourceRouted) {
-                window.STOCHASTIC_AUDIO.routePlayer(this.audioElement);
-                this.sourceRouted = true;
+            if (window.STOCHASTIC_AUDIO) {
+                window.STOCHASTIC_AUDIO.init().then(() => {
+                    // Route HTML5 Audio through the WebAudio Graph for capture
+                    if (!this.sourceRouted) {
+                        window.STOCHASTIC_AUDIO.routePlayer(this.audioElement);
+                        this.sourceRouted = true;
+                    }
+                    this.togglePlay();
+                });
             }
-            
-            this.togglePlay();
         });
 
         document.body.appendChild(playerUI);
