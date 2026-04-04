@@ -214,10 +214,16 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             filter.connect(feedback);
             feedback.connect(delay);
 
+            // 2. Hardware Mixing Stage
+            this.dryGain = this.ctx.createGain();
+            this.wetGain = this.ctx.createGain();
+            this.dryGain.gain.value = 1.0;
+            this.wetGain.gain.value = 0.0;
+
             // Master routing: Synth -> Destination & Synth -> Delay -> Destination
             this.synthNode.connect(this.ctx.destination);
             this.synthNode.connect(delay);
-            delay.connect(this.ctx.destination);
+            // delay.connect(this.ctx.destination); // Moved below
             
             // Granular Routing: Granulator -> Heavy Delay -> Destination
             this.granularNode.connect(this.ctx.destination);
@@ -266,8 +272,11 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         if (!this.ctx || this.playerRouted) return;
         try {
             this.playerSource = this.ctx.createMediaElementSource(audioElement);
-            // Clean audio goes to destination
-            this.playerSource.connect(this.ctx.destination);
+            
+            // Direct playback hooks into the dryGain stage
+            this.playerSource.connect(this.dryGain);
+            this.dryGain.connect(this.ctx.destination);
+            
             // Mirrored audio continually writes to the Granular capture ring buffer
             if (this.granularNode) {
                 this.playerSource.connect(this.granularNode);
@@ -283,15 +292,6 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         if (!this.granularNode || this.cloudLock) return;
         this.cloudLock = true;
         
-        let msg = new Float32Array(6);
-        msg[0] = 4; // Type 4
-        msg[1] = 1; // Active
-        
-        const updateDSP = (density, len, rand, gain) => {
-            msg[2] = density; msg[3] = len; msg[4] = rand; msg[5] = gain;
-            this.granularNode.port.postMessage(msg);
-        };
-        
         // Procedural Macro Envelope generating a slow physical swell over 15 seconds
         let phase = 0;
         const interval = setInterval(() => {
@@ -299,8 +299,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             
             if (phase >= 1.0) {
                 clearInterval(interval);
-                updateDSP(0, 0, 0, 0); // Shutdown
-                msg[1] = 0; this.granularNode.port.postMessage(msg); // Kill active flag
+                this.updateGranularParams(0, 0, 0, 0, 0); // Shutdown
                 this.cloudLock = false;
                 return;
             }
@@ -314,9 +313,28 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             let randomness = env * 2.5; // up to 2.5 seconds read divergence at peak
             let volume = env * 0.4;
             
-            updateDSP(density, length, randomness, volume);
+            this.updateGranularParams(1, density, length, randomness, volume);
+            this.setMix(1.0 - env, env); // Crossfade correctly during automation
             
         }, 100); // 10hz update rate
+    }
+
+    setMix(dry, wet) {
+        if (!this.isReady) return;
+        this.dryGain.gain.setTargetAtTime(dry, this.ctx.currentTime, 0.1);
+        this.wetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.1);
+    }
+
+    updateGranularParams(active, density, length, entropy, gain) {
+        if (!this.granularNode) return;
+        const msg = new Float32Array(6);
+        msg[0] = 4; // Type 4
+        msg[1] = active; 
+        msg[2] = density; 
+        msg[3] = length; 
+        msg[4] = entropy;
+        msg[5] = gain;
+        this.granularNode.port.postMessage(msg);
     }
 }
 

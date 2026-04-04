@@ -14,28 +14,33 @@ const path = require('path');
 const targetDir = 'MI+OM+RM';
 const outputFile = 'js/tracklist.js';
 
-// Recursively find .m4a files
-function findAudioFiles(dir, fileList = []) {
+// Recursively find .m4a files and group by immediate parent folder
+function findAudioFiles(dir, trackMap = {}) {
     if (!fs.existsSync(dir)) {
         console.error(`\n[COMPILER_ERROR] Source directory not mounted: ${dir}`);
-        console.error(`\nEnsure you have dropped the physical ${dir} folder into the repository root.\n`);
-        return fileList;
+        return trackMap;
     }
     
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-        const filePath = path.join(dir, file);
-        if (fs.statSync(filePath).isDirectory()) {
-            findAudioFiles(filePath, fileList);
-        } else if (filePath.toLowerCase().endsWith('.m4a')) {
-            // Store path relative to repository root, replacing backslashes for web URLs
-            fileList.push(filePath.replace(/\\/g, '/'));
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+
+        if (stat.isDirectory()) {
+            findAudioFiles(fullPath, trackMap);
+        } else if (fullPath.toLowerCase().endsWith('.m4a')) {
+            // Get the name of the immediate parent directory
+            const folderName = path.basename(path.dirname(fullPath));
+            const webPath = fullPath.replace(/\\/g, '/');
+            
+            if (!trackMap[folderName]) trackMap[folderName] = [];
+            trackMap[folderName].push(webPath);
         }
     }
-    return fileList;
+    return trackMap;
 }
 
-console.log(`[TRACK_COMPILER] Initializing non-destructive scan over physical partition: ${targetDir}/...`);
+console.log(`[TRACK_COMPILER] Grouping physical audio partitions by folder metadata: ${targetDir}/...`);
 const tracks = findAudioFiles(targetDir);
 
 if (tracks.length === 0) {
