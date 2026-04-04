@@ -97,14 +97,23 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
         this.randomness = 0;   // offset distance
         this.masterGain = 0;   // cloud volume
         
+        // Alien Interruption Parameters
+        this.alienModType = 0; // 0=RM, 1=AM, 2=FM
+        this.alienModDepth = 0; 
+        
         this.port.onmessage = (e) => {
-            const data = e.data; // Float32Array: [type, active, density, length, randomness, gain]
+            const data = e.data; // Float32Array: [type, active, density, length, randomness, gain, alienMode, alienDepth]
             if (data[0] === 4) { // Macro Env Payload
                 this.active = data[1] > 0;
                 this.density = data[2];
                 this.grainLength = data[3] * this.sampleRate; // convert seconds to frames
                 this.randomness = data[4] * this.sampleRate;
                 this.masterGain = data[5];
+                
+                if (data.length > 6) {
+                    this.alienModType = data[6];
+                    this.alienModDepth = data[7];
+                }
             }
         };
     }
@@ -124,17 +133,16 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
 
     process(inputs, outputs, parameters) {
         const input = inputs[0];
+        const alien = inputs[1]; // Secondary modulation source
         const output = outputs[0];
         if (!output || !output[0]) return true;
         const channelCount = output.length;
         
-        // 1. Record incoming audio continuously into the ring buffer
+        // 1. Record primary music continuously into the ring buffer
         if (input && input[0]) {
             for (let i = 0; i < input[0].length; ++i) {
-                // Mix stereo to mono for the granular capture
                 let mix = input[0][i];
                 if (input[1]) mix = (mix + input[1][i]) * 0.5;
-                
                 this.ringBuffer[this.writePtr] = mix;
                 this.writePtr = (this.writePtr + 1) % this.bufferSize;
             }
@@ -149,38 +157,50 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
             }
         }
 
-        // 3. Process Active Grains (Hanning Window)
+        // 3. Process Active Grains (Hanning Window + Alien Modulation)
         for (let i = 0; i < output[0].length; ++i) {
             let outSample = 0;
             
+            // Capture current alien sample for modulation
+            const alienSample = (alien && alien[0]) ? alien[0][i] : 0;
+            
             for (let g = this.grains.length - 1; g >= 0; g--) {
                 let grain = this.grains[g];
+                
+                // --- ALIEN FM (Frequency Modulation) ---
+                // Modulate grain speed by alien signal
+                const speedMod = (this.alienModType === 2) ? (1.0 + alienSample * this.alienModDepth) : 1.0;
                 
                 // Read from ring buffer
                 let rIdx = Math.floor(grain.readPtr) % this.bufferSize;
                 let sample = this.ringBuffer[rIdx];
                 
-                // Hanning Window envelope (bell curve matching the grain length)
+                // Hanning Window envelope
                 let windowEnv = 0.5 * (1 - Math.cos((2 * Math.PI * grain.position) / grain.length));
+                let grainOut = sample * windowEnv;
                 
-                outSample += sample * windowEnv;
+                // --- ALIEN RM/AM (Ring/Amplitude Modulation) ---
+                if (this.alienModType === 0) { // RM: True multiplication (bipolar)
+                    grainOut = grainOut * (1.0 - this.alienModDepth) + (grainOut * alienSample) * this.alienModDepth;
+                } else if (this.alienModType === 1) { // AM: Unipolar envelope
+                    const mod = (alienSample * 0.5 + 0.5);
+                    grainOut = grainOut * (1.0 - this.alienModDepth) + (grainOut * mod) * this.alienModDepth;
+                }
+                
+                outSample += grainOut;
                 
                 // Advance grain state
                 grain.position += 1;
-                grain.readPtr += grain.speed;
+                grain.readPtr += (grain.speed * speedMod);
                 
                 if (grain.position >= grain.length) {
-                    this.grains.splice(g, 1); // Kill dead grains
+                    this.grains.splice(g, 1);
                 }
             }
             
-            // Output mixing
             outSample *= this.masterGain;
-            outSample = Math.max(-1.0, Math.min(1.0, outSample)); // strict clip
-            
-            for (let channel = 0; channel < channelCount; ++channel) { 
-                output[channel][i] = outSample; 
-            }
+            outSample = Math.max(-1.0, Math.min(1.0, outSample));
+            for (let channel = 0; channel < channelCount; ++channel) { output[channel][i] = outSample; }
         }
         
         return true;
@@ -195,7 +215,11 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             await this.ctx.audioWorklet.addModule(blobUrl);
             this.synthNode = new AudioWorkletNode(this.ctx, 'stochastic-synth-v1');
             
-            this.granularNode = new AudioWorkletNode(this.ctx, 'stochastic-granulator');
+            this.granularNode = new AudioWorkletNode(this.ctx, 'stochastic-granulator', {
+                numberOfInputs: 2,
+                numberOfOutputs: 1,
+                outputChannelCount: [2]
+            });
             
             URL.revokeObjectURL(blobUrl); // Cleanup pseudo-file
             
@@ -302,6 +326,23 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         }
     }
 
+    routeAlien(audioElement) {
+        if (!this.ctx || !this.granularNode) return;
+        try {
+            // Check for file protocol capture block
+            if (window.location.protocol === 'file:') {
+                console.warn('[AUDIO_CORE]: Alien Modulator blocked on local file:// protocol.');
+                return;
+            }
+            this.alienSource = this.ctx.createMediaElementSource(audioElement);
+            // Connect to input 1 of the granulator (input 0 is the main song)
+            this.alienSource.connect(this.granularNode, 0, 1);
+            console.log('[AUDIO_CORE]: Alien Interruption stream connected to modulation input.');
+        } catch (e) {
+            console.warn('[AUDIO_CORE]: Alien Routing failed.', e);
+        }
+    }
+
     async launchGranularCloud() {
         if (!this.granularNode || this.cloudLock) return;
         this.cloudLock = true;
@@ -339,15 +380,17 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         this.wetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.1);
     }
 
-    updateGranularParams(active, density, length, entropy, gain) {
+    updateGranularParams(active, density, length, entropy, gain, alienMode = 0, alienDepth = 0) {
         if (!this.granularNode) return;
-        const msg = new Float32Array(6);
+        const msg = new Float32Array(8);
         msg[0] = 4; // Type 4
         msg[1] = active; 
         msg[2] = density; 
         msg[3] = length; 
         msg[4] = entropy;
         msg[5] = gain;
+        msg[6] = alienMode;
+        msg[7] = alienDepth;
         this.granularNode.port.postMessage(msg);
     }
 }

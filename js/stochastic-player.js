@@ -6,12 +6,20 @@
 
 class StochasticPlayer {
     constructor() {
+        this.trackMap = {};
         this.tracklist = [];
         this.audioElement = new Audio();
-        // Removed anonymous crossOrigin to support file:// playback
+        
+        this.alienAudio = new Audio();
+        this.alienAudio.loop = true;
+        this.alienAudio.muted = true; // Carrier signal is hidden, not directly audible
+        
         this.currentIndex = 0;
         this.isPlaying = false;
         
+        this.sourceRouted = false;
+        this.alienRouted = false;
+
         // Granular cloud automation bounds
         this.cloudActive = false;
         this.macroInterval = null;
@@ -39,6 +47,9 @@ class StochasticPlayer {
             // Build UI components
             this.injectUI();
             this.injectDrawer();
+            
+            // Seed the initial alien carrier
+            this.mutateAlien();
 
             this.audioElement.addEventListener('ended', () => this.playNextTrack());
             
@@ -71,7 +82,24 @@ class StochasticPlayer {
         this.audioElement.play().then(() => {
             this.isPlaying = true;
             this.updateUI(path);
+            
+            // Ensure alien is playing and routed if possible
+            if (this.alienAudio.src) {
+                this.alienAudio.play().catch(() => {});
+                if (window.STOCHASTIC_AUDIO && !this.alienRouted) {
+                    window.STOCHASTIC_AUDIO.routeAlien(this.alienAudio);
+                    this.alienRouted = true;
+                }
+            }
         }).catch(err => console.log('[AUDIO_PLAYER] Autoplay blocked.', err));
+    }
+
+    mutateAlien() {
+        if (this.tracklist.length === 0) return;
+        const randomTrack = this.tracklist[Math.floor(Math.random() * this.tracklist.length)];
+        this.alienAudio.src = encodeURI(randomTrack);
+        if (this.isPlaying) this.alienAudio.play().catch(() => {});
+        console.log(`[AUDIO_PLAYER] Alien carrier mutated: ${randomTrack}`);
     }
 
     togglePlay() {
@@ -149,6 +177,10 @@ class StochasticPlayer {
                         window.STOCHASTIC_AUDIO.routePlayer(this.audioElement);
                         this.sourceRouted = true;
                     }
+                    if (!this.alienRouted && this.alienAudio.src) {
+                        window.STOCHASTIC_AUDIO.routeAlien(this.alienAudio);
+                        this.alienRouted = true;
+                    }
                     this.togglePlay();
                 });
             }
@@ -209,6 +241,21 @@ class StochasticPlayer {
                 <label>ECHO_FEEDBACK</label>
                 <input type="range" id="knob-feedback" min="0" max="0.95" step="0.01" value="0.6">
             </div>
+
+            <div style="font-size: 0.7rem; color: var(--accent-color); letter-spacing: 2px; margin: 15px 0 10px 0;">[ ALIEN_INTERRUPTION ]</div>
+            <div class="knob-row">
+                <label>MOD_DEPTH</label>
+                <input type="range" id="knob-alien-depth" min="0" max="1" step="0.01" value="0">
+            </div>
+            <div class="knob-row">
+                <label>MOD_MODE</label>
+                <select id="knob-alien-mode" style="background: transparent; color: var(--text-color); border: 1px solid var(--dim-color); font-size: 0.6rem; width: 140px;">
+                    <option value="0">RING_MOD (Metallic)</option>
+                    <option value="1">AMP_MOD (Rhythm)</option>
+                    <option value="2">FREQ_MOD (Alien)</option>
+                </select>
+            </div>
+            <button id="btn-mutate-alien" class="sp-btn" style="margin-top: 5px;">MUTATE_CARRIER_SOURCE</button>
 
             <div style="display: flex; gap: 5px; margin-top: 15px;">
                 <button id="btn-randomize" class="sp-btn">STOCH_RANDOMIZE</button>
@@ -276,17 +323,23 @@ class StochasticPlayer {
             const ent = parseFloat(document.getElementById('knob-entropy').value);
             const delay = parseFloat(document.getElementById('knob-delay').value);
             const feedback = parseFloat(document.getElementById('knob-feedback').value);
+            const alienDepth = parseFloat(document.getElementById('knob-alien-depth').value);
+            const alienMode = parseInt(document.getElementById('knob-alien-mode').value);
             
             if (window.STOCHASTIC_AUDIO) {
                 window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
-                window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8);
+                window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8, alienMode, alienDepth);
                 window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
             }
         };
 
-        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback'].forEach(id => {
-            document.getElementById(id).oninput = updateKnobs;
+        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback', 'knob-alien-depth', 'knob-alien-mode'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el.tagName === 'SELECT') el.onchange = updateKnobs;
+            else el.oninput = updateKnobs;
         });
+
+        document.getElementById('btn-mutate-alien').onclick = () => this.mutateAlien();
 
         document.getElementById('btn-reset').onclick = () => {
             ['knob-mix', 'knob-density'].forEach(id => document.getElementById(id).value = 0);
