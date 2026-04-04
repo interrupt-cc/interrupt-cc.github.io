@@ -45,6 +45,14 @@ class HorizonGrid {
         this.edgeDamping = 0.0; // 0=Ribbon, 1+=Captured/Contained
 
         window.addEventListener('resize', () => this.onResize());
+        
+        // Tactile Resonance
+        this.canvas.addEventListener('mousedown', () => this.triggerRipple());
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.triggerRipple();
+        });
+        
         this.animate();
     }
 
