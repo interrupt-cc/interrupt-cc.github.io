@@ -185,6 +185,10 @@ class StochasticPlayer {
                         window.STOCHASTIC_AUDIO.routeAlien(this.alienAudio);
                         this.alienRouted = true;
                     }
+                    
+                    // Sync all slider defaults (Master Pressure, Delay, etc.)
+                    updateKnobs();
+                    
                     this.togglePlay();
                 });
             }

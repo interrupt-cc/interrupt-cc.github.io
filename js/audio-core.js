@@ -135,13 +135,6 @@ class StochasticGranulatorProcessor extends AudioWorkletProcessor {
     }
 
     process(inputs, outputs, parameters) {
-        const input = inputs[0];
-        const alien = inputs[1]; // Secondary modulation source
-        const output = outputs[0];
-        if (!output || !output[0]) return true;
-        const channelCount = output.length;
-        
-    process(inputs, outputs, parameters) {
         const input = inputs[0]; // Stereo multiplexed: [0]=Music, [1]=Alien
         const output = outputs[0];
         if (!output || !output[0] || !input || !input[0]) return true;
@@ -265,6 +258,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             // Granular Routing: Granular -> WetGain -> Destination & Delay
             this.granularNode.connect(this.wetGain);
             this.wetGain.connect(this.ctx.destination);
+            this.dryGain.connect(this.ctx.destination); 
             this.wetGain.connect(delay); 
 
             delay.connect(this.ctx.destination);
