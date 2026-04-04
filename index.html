@@ -34,7 +34,7 @@
                     <li class="post-item"
                         style="border-top: 1px dashed var(--dim-color); padding-top: 2rem; margin-top: 3rem;">
                         <span class="post-id">0x0</span>
-                        <a href="controls.html" class="post-link">SYSTEM_CALIBRATE</a>
+                        <a href="controls.html" id="cal-link" class="post-link">SYSTEM_CALIBRATE</a>
                         <span class="post-date">CALIBRATION_REQUIRED</span>
                     </li>
                 </ul>
@@ -69,6 +69,7 @@
     <script src="js/tracklist.js"></script>
     <script src="js/audio-core.js"></script>
     <script src="js/stochastic-player.js"></script>
+    <script src="js/system-calibrate.js"></script>
     <script>
         // Global CRT Configuration
         window.CRT_CONFIG = {
@@ -136,6 +137,12 @@
             win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
             win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
             win.style.transform = 'none';
+        });
+        
+        // Calibrate Link Handler
+        document.getElementById('cal-link')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.SYSTEM_CALIBRATE) window.SYSTEM_CALIBRATE.toggle();
         });
 
         document.getElementById('close-overlay').addEventListener('click', () => {

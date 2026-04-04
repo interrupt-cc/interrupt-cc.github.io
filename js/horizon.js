@@ -53,6 +53,11 @@ class HorizonGrid {
             this.triggerRipple();
         });
         
+        // Robust Initialization: Fix for "Only shows up on DevTools/Resize"
+        this.onResize();
+        setTimeout(() => this.onResize(), 100);
+        window.addEventListener('load', () => this.onResize());
+        
         this.animate();
     }
 
@@ -62,7 +67,7 @@ class HorizonGrid {
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.vanishX = this.width / 2;
-        this.vanishY = this.height * 0.66; // 2/3rds horizon
+        this.vanishY = this.height * 0.33; // Upper two-thirds (mapped to 1/3 from top)
         
         // Calculate ground plane world-Y needed to hit the bottom of screen at Z=10
         this.zStart = 10;
