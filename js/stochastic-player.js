@@ -20,7 +20,8 @@ class StochasticPlayer {
     async init() {
         try {
             // Fetch dynamically built manifest
-            const response = await fetch('../js/tracklist.json');
+            // Assuming index.html (root) holds the player, path is relative to root
+            const response = await fetch('js/tracklist.json');
             this.tracklist = await response.json();
             
             if (!this.tracklist || this.tracklist.length === 0) {
@@ -58,7 +59,7 @@ class StochasticPlayer {
         this.currentIndex = (this.currentIndex + 1) % this.tracklist.length;
         const trackPath = this.tracklist[this.currentIndex];
         
-        this.audioElement.src = `../${trackPath}`;
+        this.audioElement.src = trackPath; // trackPath originates from root MI+OM+RM/
         this.audioElement.play().then(() => {
             this.isPlaying = true;
             this.updateUI(trackPath);
@@ -157,4 +158,8 @@ class StochasticPlayer {
 }
 
 window.STOCHASTIC_PLAYER = new StochasticPlayer();
-window.addEventListener('DOMContentLoaded', () => window.STOCHASTIC_PLAYER.init());
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.STOCHASTIC_PLAYER.init());
+} else {
+    window.STOCHASTIC_PLAYER.init();
+}
