@@ -383,6 +383,7 @@ class StochasticPlayer {
         const ent = parseFloat(document.getElementById('knob-entropy')?.value || 0.5);
         const delay = parseFloat(document.getElementById('knob-delay')?.value || 0.45);
         const feedback = parseFloat(document.getElementById('knob-feedback')?.value || 0.6);
+        const alienDepth = parseFloat(document.getElementById('knob-alien-depth')?.value || 0);
         const alienMode = parseInt(document.getElementById('knob-alien-mode')?.value || 0);
         const masterPressure = parseFloat(document.getElementById('knob-master-pressure')?.value || 1.0);
         const waveFreq = parseFloat(document.getElementById('knob-wave-freq')?.value || 0.15);

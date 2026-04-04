@@ -327,6 +327,8 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         if (!this.ctx || this.playerRouted) return;
         
         try {
+            // Fix: Set crossOrigin to anonymous to prevent browser silence on cross-domain assets
+            audioElement.crossOrigin = "anonymous";
             this.playerSource = this.ctx.createMediaElementSource(audioElement);
             
             // --- INSERT MASTERING CHAIN ---
@@ -356,6 +358,8 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
     routeAlien(audioElement) {
         if (!this.ctx || !this.merger) return;
         try {
+            // Fix: Set crossOrigin to anonymous for the alien carrier stream
+            audioElement.crossOrigin = "anonymous";
             this.alienSource = this.ctx.createMediaElementSource(audioElement);
             // Connect to Right channel of the granular merger
             this.alienSource.connect(this.merger, 0, 1);
