@@ -62,7 +62,7 @@ class HorizonGrid {
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.vanishX = this.width / 2;
-        this.vanishY = this.height / 2; // Center horizon
+        this.vanishY = this.height * 0.66; // 2/3rds horizon
         
         // Calculate ground plane world-Y needed to hit the bottom of screen at Z=10
         this.zStart = 10;
