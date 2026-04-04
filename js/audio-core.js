@@ -8,6 +8,8 @@ class StochasticAudioController {
     constructor() {
         this.ctx = null;
         this.synthNode = null;
+        this.delayNode = null; // High-level reference
+        this.feedbackNode = null; 
         this.isReady = false;
         
         // Reusable array for zero allocation GC-free message passing
@@ -214,6 +216,9 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             filter.connect(feedback);
             feedback.connect(delay);
 
+            this.delayNode = delay;
+            this.feedbackNode = feedback;
+
             // 2. Hardware Mixing Stage
             this.dryGain = this.ctx.createGain();
             this.wetGain = this.ctx.createGain();
@@ -245,6 +250,12 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         this._msgBuffer[2] = val2;
         // Using postMessage with the buffer. Browsers optimize TypedArrays aggressively.
         this.synthNode.port.postMessage(this._msgBuffer);
+    }
+
+    setDelay(time, feedback) {
+        if (!this.isReady || !this.delayNode) return;
+        this.delayNode.delayTime.setTargetAtTime(time, this.ctx.currentTime, 0.1);
+        this.feedbackNode.gain.setTargetAtTime(feedback, this.ctx.currentTime, 0.1);
     }
 
     // High-level API for CV Puzzle

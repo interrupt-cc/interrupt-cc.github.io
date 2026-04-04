@@ -201,6 +201,14 @@ class StochasticPlayer {
                 <label>SIGNAL_ENTROPY</label>
                 <input type="range" id="knob-entropy" min="0" max="4" step="0.01" value="0.5">
             </div>
+            <div class="knob-row">
+                <label>DELAY_TIME</label>
+                <input type="range" id="knob-delay" min="0.01" max="2.0" step="0.01" value="0.45">
+            </div>
+            <div class="knob-row">
+                <label>ECHO_FEEDBACK</label>
+                <input type="range" id="knob-feedback" min="0" max="0.95" step="0.01" value="0.6">
+            </div>
 
             <div style="display: flex; gap: 5px; margin-top: 15px;">
                 <button id="btn-randomize" class="sp-btn">STOCH_RANDOMIZE</button>
@@ -266,19 +274,24 @@ class StochasticPlayer {
             const dens = parseFloat(document.getElementById('knob-density').value);
             const len = parseFloat(document.getElementById('knob-length').value);
             const ent = parseFloat(document.getElementById('knob-entropy').value);
+            const delay = parseFloat(document.getElementById('knob-delay').value);
+            const feedback = parseFloat(document.getElementById('knob-feedback').value);
             
             if (window.STOCHASTIC_AUDIO) {
                 window.STOCHASTIC_AUDIO.setMix(1.0 - wet, wet);
                 window.STOCHASTIC_AUDIO.updateGranularParams(1, dens, len, ent, wet * 0.8);
+                window.STOCHASTIC_AUDIO.setDelay(delay, feedback);
             }
         };
 
-        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy'].forEach(id => {
+        ['knob-mix', 'knob-density', 'knob-length', 'knob-entropy', 'knob-delay', 'knob-feedback'].forEach(id => {
             document.getElementById(id).oninput = updateKnobs;
         });
 
         document.getElementById('btn-reset').onclick = () => {
             ['knob-mix', 'knob-density'].forEach(id => document.getElementById(id).value = 0);
+            document.getElementById('knob-delay').value = 0.45;
+            document.getElementById('knob-feedback').value = 0.6;
             updateKnobs();
         };
 
@@ -287,6 +300,8 @@ class StochasticPlayer {
             document.getElementById('knob-density').value = (Math.random() * 0.008).toFixed(4);
             document.getElementById('knob-length').value = (Math.random() * 0.3).toFixed(3);
             document.getElementById('knob-entropy').value = (Math.random() * 3.0).toFixed(2);
+            document.getElementById('knob-delay').value = (Math.random() * 1.5 + 0.1).toFixed(2);
+            document.getElementById('knob-feedback').value = (Math.random() * 0.8 + 0.1).toFixed(2);
             updateKnobs();
         };
     }
