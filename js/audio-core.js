@@ -449,6 +449,13 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
                 currentScale += (diff - currentScale) * 0.02;
                 this.masterGain.gain.setTargetAtTime(currentScale, this.ctx.currentTime, 0.5);
             }
+
+            // 3. Peak Detection for Visuals (Top 1/4 of normalized range)
+            const peakThreshold = 0.22; 
+            if (rms > peakThreshold && (Date.now() - (this._lastPeakTrigger || 0) > 350)) {
+                if (window.HORIZON) window.HORIZON.triggerRipple();
+                this._lastPeakTrigger = Date.now();
+            }
         }, 100);
     }
 
