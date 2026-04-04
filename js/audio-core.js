@@ -264,14 +264,19 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
     
     routePlayer(audioElement) {
         if (!this.ctx || this.playerRouted) return;
-        this.playerSource = this.ctx.createMediaElementSource(audioElement);
-        // Clean audio goes to destination
-        this.playerSource.connect(this.ctx.destination);
-        // Mirrored audio continually writes to the Granular capture ring buffer
-        if (this.granularNode) {
-            this.playerSource.connect(this.granularNode);
+        try {
+            this.playerSource = this.ctx.createMediaElementSource(audioElement);
+            // Clean audio goes to destination
+            this.playerSource.connect(this.ctx.destination);
+            // Mirrored audio continually writes to the Granular capture ring buffer
+            if (this.granularNode) {
+                this.playerSource.connect(this.granularNode);
+            }
+            this.playerRouted = true;
+            console.log('[AUDIO_CORE]: MediaElementSourceNode captured for granular processing.');
+        } catch (e) {
+            console.warn('[AUDIO_CORE]: WebAudio Capture Blocked (Security/CORS). Falling back to direct HTML5 playback.', e);
         }
-        this.playerRouted = true;
     }
 
     async launchGranularCloud() {

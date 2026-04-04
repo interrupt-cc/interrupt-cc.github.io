@@ -8,7 +8,7 @@ class StochasticPlayer {
     constructor() {
         this.tracklist = [];
         this.audioElement = new Audio();
-        this.audioElement.crossOrigin = "anonymous";
+        // Removed anonymous crossOrigin to support file:// playback
         this.currentIndex = 0;
         this.isPlaying = false;
         
@@ -57,7 +57,8 @@ class StochasticPlayer {
         this.currentIndex = (this.currentIndex + 1) % this.tracklist.length;
         const trackPath = this.tracklist[this.currentIndex];
         
-        this.audioElement.src = trackPath; // trackPath originates from root MI+OM+RM/
+        // Encode URI to handle spaces and apostrophes in filenames
+        this.audioElement.src = encodeURI(trackPath); 
         this.audioElement.play().then(() => {
             this.isPlaying = true;
             this.updateUI(trackPath);

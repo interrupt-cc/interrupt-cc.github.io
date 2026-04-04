@@ -117,7 +117,7 @@ body::before {
 .gutter > * {
   /* Only applied to the text/elements themselves */
   position: relative;
-  z-index: 2;
+  z-index: 5; /* Ensure text is above the tearing overlay */
 }
 
 .gutter::after {
@@ -134,8 +134,9 @@ body::before {
   /* Only the bottom 1/8 slice of the CONTENT area */
   clip-path: polygon(0 87.5%, 100% 87.5%, 100% 100%, 0 100%);
   transform: translateX(calc(var(--crt-tear, 0) * 80px + var(--crt-tear-rand, 0) * 0.5 * 1px));
-  z-index: 10; /* Above the content, but transparent */
+  z-index: 1; /* Below the content */
   pointer-events: none;
+  opacity: 0.6; /* Increased transparency by default */
 }
 
 header {
@@ -448,3 +449,14 @@ body {
 .syn-number { color: #00ff88; } /* Bright Green */
 .syn-literal { color: #ff00cc; }
 .syn-type { color: #00e5ff; text-decoration: underline dotted var(--dim-color); }
+
+/* MOBILE_OPTIMIZATION_LAYER */
+@media screen and (max-width: 600px) {
+  html { font-size: 14px; }
+  .window, .gutter { width: 95% !important; height: 95% !important; padding: 1rem !important; }
+  h1 { font-size: 1.5rem !important; }
+  #stochastic-player { 
+    top: auto !important; bottom: 10px !important; right: 10px !important; 
+    font-size: 0.7rem !important; padding: 5px 8px !important;
+  }
+}

@@ -8,6 +8,11 @@
     <style>
         /* (Styles omitted in template for brevity, they are in the generated HTML and style.css) */
         .cv-container { max-width: 95%; margin: 1rem auto; padding: 2rem; background: rgba(0, 0, 0, 0.9); border: 1px solid var(--dim-color); box-shadow: var(--glow-shadow); position: relative; z-index: 10; }
+        @media screen and (max-width: 600px) {
+            .cv-container { padding: 1rem; width: 98%; }
+            .cv-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .cv-item-header { flex-direction: column; }
+        }
         .cv-header { border-bottom: 2px solid var(--accent-color); padding-bottom: 1rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
         .cv-section { margin-bottom: 3rem; }
         .cv-section h2 { font-size: 1.2rem; color: var(--accent-color); text-transform: uppercase; letter-spacing: 3px; border-left: 4px solid var(--accent-color); padding-left: 1rem; margin-bottom: 1.5rem; }
