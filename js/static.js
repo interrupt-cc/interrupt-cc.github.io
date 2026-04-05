@@ -187,7 +187,7 @@ const fsSource = `
             finalColor += vec3(0.0, 0.45, 0.65) * crissCross * flicker; // Cyan-ish test lines
 
             // 2. Apply aggressive non-linear contrast (Crush Blacks)
-            finalColor = pow(max(vec3(0.0), finalColor - 0.1), 1.45) * 1.6;
+            finalColor = pow(max(vec3(0.0), finalColor - 0.1), vec3(1.45)) * 1.6;
             // 3. Add sharper grain on top of crushed black
             finalColor += vec3(random(uv + u_time) * 0.05);
         }
