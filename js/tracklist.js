@@ -88,5 +88,62 @@ window.STOCHASTIC_TRACKLIST = {
   ],
   "the bay": [
     "MI+OM+RM/the bay/11 the bay.m4a"
+  ],
+  "2008trackbundle": [
+    "MI+OM+RM/2008trackbundle/FirstBreath_sequenced.mp3",
+    "MI+OM+RM/2008trackbundle/cloak.mp3",
+    "MI+OM+RM/2008trackbundle/dimensionMouse_stripped.mp3",
+    "MI+OM+RM/2008trackbundle/downhill.mp3",
+    "MI+OM+RM/2008trackbundle/ex.mp3",
+    "MI+OM+RM/2008trackbundle/extraNeuralCache.mp3",
+    "MI+OM+RM/2008trackbundle/indoNeural.b_sequenced.mp3",
+    "MI+OM+RM/2008trackbundle/mass.mp3",
+    "MI+OM+RM/2008trackbundle/musketrot.mp3",
+    "MI+OM+RM/2008trackbundle/soydreamer_ex.mp3"
+  ],
+  "dalbsen kumora (download)": [
+    "MI+OM+RM/dalbsen kumora (download)/01 XSYL.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/02 ENWO (suffocation eruption).mp3",
+    "MI+OM+RM/dalbsen kumora (download)/03 SFJR.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/04 OHGW.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/05 XJWZ.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/06 HLSF.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/07 DGDA.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/08 ABKE.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/09 QDKU.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/10 SHXI (the receding solid forces).mp3",
+    "MI+OM+RM/dalbsen kumora (download)/11 CQNW.mp3",
+    "MI+OM+RM/dalbsen kumora (download)/12 AFDU (bonus).mp3",
+    "MI+OM+RM/dalbsen kumora (download)/13 YCSI (bonus).mp3"
+  ],
+  "misterinterrupt - Player Killer": [
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/1. in on yx.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/2. multiplayer (wXch0perator mix).mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/3. player killer 138.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/4. oxygen continent.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/5. burglar unit.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/6. 0G.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/7. how to be a nobody.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/8. telekinetic   welcome to nowhere.mp3",
+    "MI+OM+RM/misterinterrupt - Player Killer プレイヤーキラー/9. interrupt's theme.mp3"
+  ],
+  "no photon into no nation": [
+    "MI+OM+RM/no photon into no nation/01 cloakland glyph dream walk.mp3",
+    "MI+OM+RM/no photon into no nation/02 psychic reef in knit ocean.mp3",
+    "MI+OM+RM/no photon into no nation/03 lightgate.mp3",
+    "MI+OM+RM/no photon into no nation/04 )))))) Alternighting (hypno scroll dub))))))))).mp3",
+    "MI+OM+RM/no photon into no nation/05 cloakland monovison klangrays walk.mp3",
+    "MI+OM+RM/no photon into no nation/06 tachyon streams (lets go in your eyes).mp3",
+    "MI+OM+RM/no photon into no nation/07 per omnes dimensiones.mp3",
+    "MI+OM+RM/no photon into no nation/08 echo door (let go of your eyes).mp3",
+    "MI+OM+RM/no photon into no nation/09 UL a perspective on movement.mp3",
+    "MI+OM+RM/no photon into no nation/10 spectralis.mp3"
+  ],
+  "substrata travel via minus viewing II": [
+    "MI+OM+RM/substrata travel via minus viewing II/01 Tachyon Streams.mp3",
+    "MI+OM+RM/substrata travel via minus viewing II/02 Subdermal.mp3",
+    "MI+OM+RM/substrata travel via minus viewing II/03 Guerrilla Ambient.mp3",
+    "MI+OM+RM/substrata travel via minus viewing II/04 Labyrinth.mp3",
+    "MI+OM+RM/substrata travel via minus viewing II/05 Per Omnes Dimensiones.mp3"
   ]
 };
