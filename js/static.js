@@ -102,8 +102,15 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        // Restored power-curve to 1.8 for much richer 'Analog' static (was 3.0)
-        float n = pow(random(uv + fract(u_time * 0.88)), 1.8) * u_noise_floor * 2.8; 
+        float n;
+        if (u_boost_contrast > 0.5) {
+            // [ DIGITAL ENGINE ] - Cyan-biased grain for high-contrast voids
+            n = pow(random(uv + fract(u_time * 0.88)), 1.8) * u_noise_floor * 2.8; 
+        } else {
+            // [ ANALOG ENGINE ] - 100% FAITHFUL RESTORATION of original 3.0 curve (Cool Static)
+            // No stochastic grain scaling, just pure historical noise logic
+            n = pow(random(uv + fract(u_time * 0.88)), 3.0) * u_noise_floor * 3.0; 
+        }
         
         // Randomized brightness intensities
         float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
@@ -254,18 +261,26 @@ let lastGhostTime = -10.0; // Force immediate start
 let currentGrainScale = 1.0;
 let lastGrainShift = 0;
 
+// 6. ENGINE TRANSITION STATE
+let engineSlide = 0; // 0 = Analog, 1 = Digital
+
 function render(time) {
     time *= 0.001; // convert to seconds
     
-    // Resize handling
+    // ... (Resize handling)
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
         canvas.width = RENDER_W;
         canvas.height = RENDER_H;
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    // Use values from CRT_CONFIG if available
     const config = window.CRT_CONFIG || { pinch: 0.15, freq: 4, snap: 1.8 };
+    
+    // Smooth Interpolation Logic
+    const targetBoost = config['boost-contrast'] || 0;
+    engineSlide += (targetBoost - engineSlide) * 0.08; // 8% per frame slide
+
+    // 1. Dual-Mode Burst Logic ...
 
     // 1. Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
     const bInterval = config.freq || 4.0;
@@ -317,29 +332,31 @@ function render(time) {
         if (pinchSpike < 0.001) pinchSpike = 0;
     }
 
-    // 3. COMPRESSION BUFFER STATE MACHINE
+    // 3. COMPRESSION BUFFER STATE MACHINE (Aggressive Analog Ink Drip)
     const ghostDensity = config.trails || 0.45;
-    const ghostInterval = (1.1 - ghostDensity) * 3.0; // Much more frequent for visibility
+    // When engineSlide is 0 (Analog), ghosting is 2x more frequent and 2x larger
+    const engineAggression = 1.0 + (1.0 - engineSlide) * 1.5;
+    const ghostInterval = ((1.1 - ghostDensity) * 3.0) / engineAggression;
 
     if (ghostState === 'IDLE' && (time - lastGhostTime) > ghostInterval) {
         ghostState = 'BURN';
         ghostStartTime = time;
         ghostId = Math.random() * 1000.0;
         
-        // MOVED back to center area for absolute testing
+        // Random location in focus area
         ghostPos = [0.2 + Math.random() * 0.6, 0.4 + Math.random() * 0.2];
         
-        // Random drift speed
-        ghostVel = [(Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005];
+        // Random drift speed - scaled by engine aggression
+        ghostVel = [(Math.random() - 0.5) * 0.005 * engineAggression, (Math.random() - 0.5) * 0.005 * engineAggression];
         
-        // HUGE spread factor for testing
-        ghostSpread = [0.3 + Math.random() * 0.4, 0.3 + Math.random() * 0.4];
+        // Spread factor - significantly larger in Analog
+        ghostSpread = [0.2 + Math.random() * 0.3 * engineAggression, 0.2 + Math.random() * 0.3 * engineAggression];
     }
 
     if (ghostState === 'BURN') {
         const elapsed = time - ghostStartTime;
-        const attack = 0.8; 
-        ghostAlpha = Math.min(1.0, elapsed / attack);
+        const attack = 0.8 / engineAggression; 
+        ghostAlpha = Math.min(1.0, elapsed / attack) * engineAggression * 0.8;
         if (elapsed > attack) {
             ghostState = 'DRIP';
             ghostStartTime = time;
@@ -349,7 +366,6 @@ function render(time) {
         const dripDuration = 3.0;
         const progress = Math.min(1.0, elapsed / dripDuration);
         
-        // Drift away from the corner
         ghostPos[0] += ghostVel[0];
         ghostPos[1] += ghostVel[1];
         
@@ -360,7 +376,7 @@ function render(time) {
     } else if (ghostState === 'FADE') {
         const elapsed = time - ghostStartTime;
         const release = 0.8;
-        ghostAlpha = Math.max(0, 1.0 - (elapsed / release));
+        ghostAlpha = Math.max(0, (1.0 - (elapsed / release)) * engineAggression * 0.8);
         if (ghostAlpha <= 0) {
             ghostState = 'IDLE';
             lastGhostTime = time;
@@ -408,7 +424,10 @@ function render(time) {
         lastGrainShift = time;
     }
     
-    gl.uniform1f(noiseUniformLocation, (config.noise || 0.25) * currentGrainScale);
+    const noiseVal = (config.noise || 0.25);
+    const finalNoise = (config['boost-contrast'] > 0.5) ? (noiseVal * currentGrainScale) : noiseVal;
+    
+    gl.uniform1f(noiseUniformLocation, finalNoise);
     gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
     // ghost uniforms
     gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);
@@ -417,7 +436,7 @@ function render(time) {
     gl.uniform1f(ghostCBufferLoc, (config['c-buffer'] !== undefined) ? config['c-buffer'] : 0.15);
     gl.uniform2f(ghostSpreadLoc, ghostSpread[0], ghostSpread[1]);
     gl.uniform1f(ghostIdLoc, ghostId);
-    gl.uniform1f(boostContrastLoc, config['boost-contrast'] || 0);
+    gl.uniform1f(boostContrastLoc, engineSlide);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

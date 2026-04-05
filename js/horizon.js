@@ -45,6 +45,8 @@ class HorizonGrid {
         this.currentColor = '#00FFFF';
         this.isGradient = false;
         this.gradientColors = ['#00FFFF', '#FF00FF'];
+        this.colorIdx = 0; // Sequential cycle for Analog restoration
+        this.engineSlide = 0; // 0 = Analog, 1 = Digital (Interpolated)
         
         this.time = 0;
         
@@ -85,23 +87,33 @@ class HorizonGrid {
     }
 
     triggerRipple() {
-        // Weighted Stochastic Color Selection
-        const r = Math.random();
-        if (r < 0.70) {
-            // 70% Favor Cyan
-            this.currentColor = '#00FFFF';
-            this.isGradient = false;
-        } else if (r < 0.90) {
-            // 20% Gradient
-            this.isGradient = true;
-            this.gradientColors = [
-                this.palette[Math.floor(Math.random() * this.palette.length)],
-                this.palette[Math.floor(Math.random() * this.palette.length)]
-            ];
+        const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+        
+        if (boost > 0.5) {
+            // [ DIGITAL ENGINE ] - Weighted Stochastic Color Selection
+            const r = Math.random();
+            if (r < 0.70) {
+                // 70% Favor Cyan
+                this.currentColor = '#00FFFF';
+                this.isGradient = false;
+            } else if (r < 0.90) {
+                // 20% Gradient
+                this.isGradient = true;
+                this.gradientColors = [
+                    this.palette[Math.floor(Math.random() * this.palette.length)],
+                    this.palette[Math.floor(Math.random() * this.palette.length)]
+                ];
+            } else {
+                // 10% Random Solid
+                this.currentColor = this.palette[Math.floor(Math.random() * this.palette.length)];
+                this.isGradient = false;
+            }
         } else {
-            // 10% Random Solid
-            this.currentColor = this.palette[Math.floor(Math.random() * this.palette.length)];
+            // [ ANALOG ENGINE ] - Faithful Sequential Cycle Restoration
+            const idx = this.colorIdx % this.palette.length;
+            this.currentColor = this.palette[idx];
             this.isGradient = false;
+            this.colorIdx++;
         }
 
         const angle = (Math.random() - 0.5) * Math.PI * 0.6;
@@ -160,6 +172,11 @@ class HorizonGrid {
 
     animate() {
         this.time += 1.0;
+        
+        // --- INTERPOLATED ENGINE TRANSITION ---
+        const targetBoost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+        this.engineSlide += (targetBoost - this.engineSlide) * 0.08;
+
         this.draw();
         this.ripples = this.ripples.filter(r => r.update());
         requestAnimationFrame(() => this.animate());
@@ -170,9 +187,12 @@ class HorizonGrid {
         const w = this.width;
         const h = this.height;
 
-        // Reset with Trails (Deepened in High-Contrast Mode)
-        const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
-        ctx.fillStyle = boost > 0.5 ? 'rgba(0, 0, 0, 0.15)' : 'rgba(8, 9, 10, 0.25)'; 
+        // --- DYNAMIC BACKGROUND FADES (Interpolated Restoration) ---
+        // Analog: rgba(8,9,10,0.25) -> Digital: rgba(0,0,0,0.15)
+        const slide = this.engineSlide || 0;
+        const grayVal = Math.floor(8 * (1.0 - slide));
+        const alphaVal = 0.25 - (0.10 * slide);
+        ctx.fillStyle = `rgba(${grayVal}, ${grayVal + 1}, ${grayVal + 2}, ${alphaVal})`;
         ctx.fillRect(0, 0, w, h);
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
@@ -236,8 +256,8 @@ class HorizonGrid {
                 // Edges
                 ctx.lineWidth = Math.min(1.5, p1.scale * 0.05);
                 
-                const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
-                if (boost > 0.5) {
+                const slide = this.engineSlide || 0;
+                if (slide > 0.5) {
                     // DEEP BLACK ENGINE: Black lines
                     ctx.strokeStyle = `rgba(0,0,0,${alpha * 0.8})`;
                 } else {
