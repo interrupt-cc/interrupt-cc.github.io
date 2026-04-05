@@ -4,15 +4,16 @@
  */
 
 class Ripple {
-    constructor(x, z, angle, color) {
+    constructor(x, z, type = 'DIRECTIONAL', angle = 0, color = '#00FFFF') {
         this.x = x;
         this.z = z;
+        this.type = type; // 'DIRECTIONAL' or 'CIRCULAR'
         this.angle = angle || Math.random() * Math.PI * 2;
-        this.color = color || '#00FFFF';
+        this.color = color;
         this.age = 0;
-        this.maxAge = 150; // frames
-        this.peakAmp = 25 + Math.random() * 35;
-        this.wavelength = 0.15; // Spatial frequency
+        this.maxAge = type === 'CIRCULAR' ? 60 : 150; // Rain decays faster
+        this.peakAmp = type === 'CIRCULAR' ? (4 + Math.random() * 8) : (25 + Math.random() * 35);
+        this.wavelength = type === 'CIRCULAR' ? 0.35 : 0.15; 
     }
 
     update() {
@@ -22,7 +23,9 @@ class Ripple {
 
     getAmplitude() {
         const life = this.age / this.maxAge;
-        return this.peakAmp * Math.sin(life * Math.PI);
+        // Circular ripples (rain) use a tighter peak-then-fade envelope
+        const env = this.type === 'CIRCULAR' ? Math.sin(life * Math.PI) * (1.0 - life) : Math.sin(life * Math.PI);
+        return this.peakAmp * env;
     }
 }
 
@@ -78,7 +81,7 @@ class HorizonGrid {
 
     triggerRipple() {
         const angle = (Math.random() - 0.5) * Math.PI * 0.6;
-        this.ripples.push(new Ripple(0, 0, angle, this.palette[this.colorIdx % this.palette.length]));
+        this.ripples.push(new Ripple(0, 0, 'DIRECTIONAL', angle, this.palette[this.colorIdx % this.palette.length]));
         this.colorIdx++;
     }
 
@@ -103,13 +106,21 @@ class HorizonGrid {
         const midSwellPhi = z * 0.12 + this.time * 0.06;
         yOffset += Math.sin(midSwellPhi) * (12 * midRMS);
 
-        // 3. Audio-active ripples (Transient Peaks)
+        // 3. Audio-active ripples (Transient Peaks & Rain Drops)
         this.ripples.forEach(r => {
-            const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
-            // Combine ripple-local wavelength with global multiplier
-            const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
-            // Attenuate by 25% (0.75x) to prevent excessive displacement
-            yOffset += Math.sin(phi) * r.getAmplitude() * activityScale * 0.75;
+            let wave = 0;
+            if (r.type === 'CIRCULAR') {
+                // Point-source circular ripple
+                const d = Math.sqrt(Math.pow(x - r.x, 2) + Math.pow(z - r.z, 2));
+                const phi = d * r.wavelength - (this.time * 0.15);
+                wave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
+            } else {
+                // Directional wave (transients)
+                const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
+                const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
+                wave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.75;
+            }
+            yOffset += wave;
         });
 
         // 3. Cloud-peak Jitter
@@ -142,8 +153,17 @@ class HorizonGrid {
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
         const cloudEnv = window.STOCHASTIC_AUDIO?.currentCloudEnv || 0;
-        // Middle Third of RMS (approx 0.25 to 0.70 range)
-        const midRMS = Math.max(0, Math.min(1.0, (rms - 0.25) / 0.45));
+        
+        // Dynamic Range Mapping
+        const lowRMS = Math.max(0, Math.min(1.0, (0.35 - rms) / 0.35)); // Energy in bottom 1/3
+        const midRMS = Math.max(0, Math.min(1.0, (rms - 0.25) / 0.45)); // Energy in middle 1/3
+
+        // Audio Rainfall Spawner (Stochastic pocks on the grid)
+        if (Math.random() < lowRMS * 0.12) {
+            const rx = (Math.random() - 0.5) * 400; // X spread
+            const rz = this.zStart + Math.random() * 120; // Z depth
+            this.ripples.push(new Ripple(rx, rz, 'CIRCULAR', 0, '#00FFFF'));
+        }
 
         // activityScale ONLY affects deformation amplitude
         const activityScale = 0.5 + (rms * 4.0) + (cloudEnv * 3.0);
