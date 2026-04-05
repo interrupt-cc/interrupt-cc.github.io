@@ -37,7 +37,7 @@ class SystemCalibrator {
             {
                 title: 'SIGNAL_GEOMETRY',
                 controls: [
-                    { id: 'boost-contrast', label: 'MASTER_ENGINE_CONTRAST', type: 'toggle' },
+                    { id: 'boost-contrast', label: 'MASTER_ENGINE_SELECT', type: 'engine' },
                     { id: 'pinch', label: 'SINGULARITY_BREADTH', min: 0, max: 0.8, step: 0.01 },
                     { id: 'p-interval', label: 'GRAVITY_SPIKE_RATE', min: 0.25, max: 10, step: 0.25 },
                     { id: 'p-random', label: 'STOCHASTIC_DRIFT', min: 0, max: 1, step: 0.05 }
@@ -74,9 +74,21 @@ class SystemCalibrator {
         sections.forEach(sec => {
             html += `<div style="font-size: 0.6rem; color: var(--accent-color); opacity: 0.6; margin: 15px 0 10px 0; letter-spacing: 2px;">[ ${sec.title} ]</div>`;
             sec.controls.forEach(ctrl => {
-                const val = this.params[ctrl.id];
+                const val = (this.params && this.params[ctrl.id] !== undefined) ? this.params[ctrl.id] : 0;
                 
-                if (ctrl.type === 'toggle') {
+                if (ctrl.type === 'engine') {
+                    const analogActive = val < 0.5 ? 'color: #00FFFF; border: 1px solid #00FFFF;' : 'color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.05);';
+                    const digitalActive = val > 0.5 ? 'color: #00FFFF; border: 1px solid #00FFFF;' : 'color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.05);';
+                    html += `
+                        <div class="knob-row" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                            <label style="font-size: 0.6rem; color: var(--text-color);">${ctrl.label}</label>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="sys-engine-btn" data-param="${ctrl.id}" data-val="0" style="background: none; padding: 2px 8px; font-size: 0.6rem; font-family: inherit; cursor: pointer; border-radius: 2px; ${analogActive}">[ ANALOG ]</button>
+                                <button class="sys-engine-btn" data-param="${ctrl.id}" data-val="1" style="background: none; padding: 2px 8px; font-size: 0.6rem; font-family: inherit; cursor: pointer; border-radius: 2px; ${digitalActive}">[ DIGITAL ]</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (ctrl.type === 'toggle') {
                     const active = val > 0.5 ? 'color: #00FFFF; border: 1px solid #00FFFF;' : 'color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1);';
                     const text = val > 0.5 ? '[ ON ]' : '[ OFF ]';
                     html += `
@@ -126,6 +138,31 @@ class SystemCalibrator {
                 
                 // If it's the contrast boost, trigger a visual pop
                 if (param === 'boost-contrast' && window.CRT_BURST) window.CRT_BURST();
+            };
+        });
+
+        panel.querySelectorAll('.sys-engine-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const param = e.target.getAttribute('data-param');
+                const newVal = parseInt(e.target.getAttribute('data-val'));
+                
+                if (window.CRT_CONFIG) window.CRT_CONFIG[param] = newVal;
+                this.params[param] = newVal;
+                
+                // Refresh the row UI
+                const container = e.target.parentElement;
+                container.querySelectorAll('.sys-engine-btn').forEach(b => {
+                    const bVal = parseInt(b.getAttribute('data-val'));
+                    if (bVal === newVal) {
+                        b.style.color = '#00FFFF';
+                        b.style.borderColor = '#00FFFF';
+                    } else {
+                        b.style.color = 'rgba(255,255,255,0.2)';
+                        b.style.borderColor = 'rgba(255,255,255,0.05)';
+                    }
+                });
+                
+                if (window.CRT_BURST) window.CRT_BURST();
             };
         });
 

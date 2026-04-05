@@ -170,16 +170,19 @@ const fsSource = `
 
         // --- FINAL POST-PROCESSING: SHADOW CRUSHER ---
         if (u_boost_contrast > 0.5) {
-            // 1. Criss-Cross Phosphor Lines (Sparse)
-            // Using u_ghost_id to randomize the pattern slightly
-            float grid = step(0.998, sin(uv.x * 35.0 + u_ghost_id)) + step(0.998, sin(uv.y * 35.0 + u_ghost_id));
-            float flicker = step(0.4, random(vec2(u_time * 15.0)));
-            finalColor += vec3(0.0, 0.4, 0.5) * grid * flicker; // Cyan-ish test lines
+            // 1. Criss-Cross Phosphor Lines (Cross-hatch pattern)
+            // Using thicker step(0.993, ...) for Mistake-proof visibility
+            float gridX = step(0.993, sin(uv.x * 24.0 + u_ghost_id));
+            float gridY = step(0.993, sin(uv.y * 24.0 + u_ghost_id * 2.1));
+            float crissCross = max(gridX, gridY);
+            
+            float flicker = step(0.32, random(vec2(u_time * 22.0)));
+            finalColor += vec3(0.0, 0.45, 0.65) * crissCross * flicker; // Cyan-ish test lines
 
-            // 2. Apply aggressive non-linear contrast
-            finalColor = pow(max(vec3(0.0), finalColor - 0.1), 1.35) * 1.4;
-            // 3. Add a sharper grain on top of the crushed black
-            finalColor += vec3(random(uv + u_time) * 0.04);
+            // 2. Apply aggressive non-linear contrast (Crush Blacks)
+            finalColor = pow(max(vec3(0.0), finalColor - 0.1), 1.45) * 1.6;
+            // 3. Add sharper grain on top of crushed black
+            finalColor += vec3(random(uv + u_time) * 0.05);
         }
 
         gl_FragColor = vec4(finalColor, 1.0);
