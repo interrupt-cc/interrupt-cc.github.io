@@ -49,6 +49,7 @@ const fsSource = `
     uniform float u_ghost_cbuffer;
     uniform vec2 u_ghost_spread;
     uniform float u_ghost_id;
+    uniform float u_boost_contrast;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -101,8 +102,15 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        // Using the real-time noise floor uniform
-        float n = pow(random(uv + fract(u_time * 0.88)), 3.0) * u_noise_floor * 3.0; 
+        float n;
+        if (u_boost_contrast > 0.5) {
+            // [ DIGITAL ENGINE ] - Cyan-biased grain for high-contrast voids
+            n = pow(random(uv + fract(u_time * 0.88)), 1.8) * u_noise_floor * 2.8; 
+        } else {
+            // [ ANALOG ENGINE ] - 100% FAITHFUL RESTORATION of original 3.0 curve (Cool Static)
+            // No stochastic grain scaling, just pure historical noise logic
+            n = pow(random(uv + fract(u_time * 0.88)), 3.0) * u_noise_floor * 3.0; 
+        }
         
         // Randomized brightness intensities
         float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
@@ -120,17 +128,30 @@ const fsSource = `
         finalColor -= vec3(scanline);
 
         // 6. STOCHASTIC PHANTOM CLUSTER (INK CLOUD) - OVERTOP LAYER
-        // Moved to the very end to ensure it's not washed out by noise or bursts
         if (u_ghost_alpha > 0.01) {
             vec2 gUv = uv;
+            
+            // High-Contrast Scintillation Pulse
+            float scintillation = 1.0;
+            if (u_boost_contrast > 0.5) {
+                // High-frequency temporal jitter (60fps)
+                scintillation = random(vec2(u_time * 60.0, u_ghost_id));
+                scintillation = step(0.3, scintillation); // Sharp flicker
+            }
+
             if (u_ghost_cbuffer > 0.01) {
                 float gBand = step(0.1, random(vec2(floor(uv.y * 40.0), u_time * 2.5)));
-                if (gBand > 0.5) gUv.x += u_ghost_cbuffer * (random(vec2(u_time)) - 0.5);
+                if (gBand > 0.5) {
+                    float move = u_ghost_cbuffer * (random(vec2(u_time)) - 0.5);
+                    gUv.x += move;
+                    // If boost is ON, the drift physically warps the signal
+                    if (u_boost_contrast > 0.5) uv.x += move * 0.5;
+                }
             }
+
             // ATTRACTOR LOGIC
             vec2 rel = (gUv - u_ghost_pos) / u_ghost_spread;
             float distSq = dot(rel, rel);
-            // MASSIVE RELAXED FALLOFF for absolute visibility
             float attractor = exp(-distSq * 2.0); 
             
             float gridRes = 60.0;
@@ -149,9 +170,26 @@ const fsSource = `
                 float k = random(pUv + 99.0);
                 cmyk *= (1.0 - k * 0.2); 
                 
-                // ADDITIVE BLENDING OVER TOP
-                finalColor += cmyk * ghostMask * u_bleed * u_ghost_alpha * 1.5;
+                // ADDITIVE BLENDING OVER TOP with Scintillation
+                finalColor += cmyk * ghostMask * u_bleed * u_ghost_alpha * 1.5 * scintillation;
             }
+        }
+
+        // --- FINAL POST-PROCESSING: SHADOW CRUSHER ---
+        if (u_boost_contrast > 0.5) {
+            // 1. Criss-Cross Phosphor Lines (Cross-hatch pattern)
+            // Using thicker step(0.993, ...) for Mistake-proof visibility
+            float gridX = step(0.993, sin(uv.x * 24.0 + u_ghost_id));
+            float gridY = step(0.993, sin(uv.y * 24.0 + u_ghost_id * 2.1));
+            float crissCross = max(gridX, gridY);
+            
+            float flicker = step(0.32, random(vec2(u_time * 22.0)));
+            finalColor += vec3(0.0, 0.45, 0.65) * crissCross * flicker; // Cyan-ish test lines
+
+            // 2. Apply aggressive non-linear contrast (Crush Blacks)
+            finalColor = pow(max(vec3(0.0), finalColor - 0.1), vec3(1.45)) * 1.6;
+            // 3. Add sharper grain on top of crushed black
+            finalColor += vec3(random(uv + u_time) * 0.05);
         }
 
         gl_FragColor = vec4(finalColor, 1.0);
@@ -184,6 +222,7 @@ const ghostStochLoc = gl.getUniformLocation(program, "u_ghost_stoch");
 const ghostCBufferLoc = gl.getUniformLocation(program, "u_ghost_cbuffer");
 const ghostSpreadLoc = gl.getUniformLocation(program, "u_ghost_spread");
 const ghostIdLoc = gl.getUniformLocation(program, "u_ghost_id");
+const boostContrastLoc = gl.getUniformLocation(program, "u_boost_contrast");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -218,18 +257,30 @@ let ghostId = 0;
 let ghostSpread = [1.5, 1.5];
 let lastGhostTime = -10.0; // Force immediate start
 
+// Stochastic Fuzz Grain State
+let currentGrainScale = 1.0;
+let lastGrainShift = 0;
+
+// 6. ENGINE TRANSITION STATE
+let engineSlide = 0; // 0 = Analog, 1 = Digital
+
 function render(time) {
     time *= 0.001; // convert to seconds
     
-    // Resize handling
+    // ... (Resize handling)
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
         canvas.width = RENDER_W;
         canvas.height = RENDER_H;
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    // Use values from CRT_CONFIG if available
     const config = window.CRT_CONFIG || { pinch: 0.15, freq: 4, snap: 1.8 };
+    
+    // Smooth Interpolation Logic
+    const targetBoost = config['boost-contrast'] || 0;
+    engineSlide += (targetBoost - engineSlide) * 0.08; // 8% per frame slide
+
+    // 1. Dual-Mode Burst Logic ...
 
     // 1. Dual-Mode Burst Logic (1/2 Simple Snap, 1/2 Capacitor Build)
     const bInterval = config.freq || 4.0;
@@ -281,29 +332,31 @@ function render(time) {
         if (pinchSpike < 0.001) pinchSpike = 0;
     }
 
-    // 3. COMPRESSION BUFFER STATE MACHINE
+    // 3. COMPRESSION BUFFER STATE MACHINE (Aggressive Analog Ink Drip)
     const ghostDensity = config.trails || 0.45;
-    const ghostInterval = (1.1 - ghostDensity) * 3.0; // Much more frequent for visibility
+    // When engineSlide is 0 (Analog), ghosting is 2x more frequent and 2x larger
+    const engineAggression = 1.0 + (1.0 - engineSlide) * 1.5;
+    const ghostInterval = ((1.1 - ghostDensity) * 3.0) / engineAggression;
 
     if (ghostState === 'IDLE' && (time - lastGhostTime) > ghostInterval) {
         ghostState = 'BURN';
         ghostStartTime = time;
         ghostId = Math.random() * 1000.0;
         
-        // MOVED back to center area for absolute testing
+        // Random location in focus area
         ghostPos = [0.2 + Math.random() * 0.6, 0.4 + Math.random() * 0.2];
         
-        // Random drift speed
-        ghostVel = [(Math.random() - 0.5) * 0.005, (Math.random() - 0.5) * 0.005];
+        // Random drift speed - scaled by engine aggression
+        ghostVel = [(Math.random() - 0.5) * 0.005 * engineAggression, (Math.random() - 0.5) * 0.005 * engineAggression];
         
-        // HUGE spread factor for testing
-        ghostSpread = [0.3 + Math.random() * 0.4, 0.3 + Math.random() * 0.4];
+        // Spread factor - significantly larger in Analog
+        ghostSpread = [0.2 + Math.random() * 0.3 * engineAggression, 0.2 + Math.random() * 0.3 * engineAggression];
     }
 
     if (ghostState === 'BURN') {
         const elapsed = time - ghostStartTime;
-        const attack = 0.8; 
-        ghostAlpha = Math.min(1.0, elapsed / attack);
+        const attack = 0.8 / engineAggression; 
+        ghostAlpha = Math.min(1.0, elapsed / attack) * engineAggression * 0.8;
         if (elapsed > attack) {
             ghostState = 'DRIP';
             ghostStartTime = time;
@@ -313,7 +366,6 @@ function render(time) {
         const dripDuration = 3.0;
         const progress = Math.min(1.0, elapsed / dripDuration);
         
-        // Drift away from the corner
         ghostPos[0] += ghostVel[0];
         ghostPos[1] += ghostVel[1];
         
@@ -324,7 +376,7 @@ function render(time) {
     } else if (ghostState === 'FADE') {
         const elapsed = time - ghostStartTime;
         const release = 0.8;
-        ghostAlpha = Math.max(0, 1.0 - (elapsed / release));
+        ghostAlpha = Math.max(0, (1.0 - (elapsed / release)) * engineAggression * 0.8);
         if (ghostAlpha <= 0) {
             ghostState = 'IDLE';
             lastGhostTime = time;
@@ -366,7 +418,16 @@ function render(time) {
     gl.uniform1f(saturationUniformLocation, saturation);
     gl.uniform1f(aberrationUniformLocation, aberrationOffset);
     gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
-    gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
+    // Stochastic Fuzz Randomization
+    if (time - lastGrainShift > 4.0 + Math.random() * 4.0) {
+        currentGrainScale = 0.5 + Math.random() * 1.5;
+        lastGrainShift = time;
+    }
+    
+    const noiseVal = (config.noise || 0.25);
+    const finalNoise = (config['boost-contrast'] > 0.5) ? (noiseVal * currentGrainScale) : noiseVal;
+    
+    gl.uniform1f(noiseUniformLocation, finalNoise);
     gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
     // ghost uniforms
     gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);
@@ -375,6 +436,7 @@ function render(time) {
     gl.uniform1f(ghostCBufferLoc, (config['c-buffer'] !== undefined) ? config['c-buffer'] : 0.15);
     gl.uniform2f(ghostSpreadLoc, ghostSpread[0], ghostSpread[1]);
     gl.uniform1f(ghostIdLoc, ghostId);
+    gl.uniform1f(boostContrastLoc, engineSlide);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

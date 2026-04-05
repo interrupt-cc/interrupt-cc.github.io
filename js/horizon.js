@@ -40,7 +40,14 @@ class HorizonGrid {
         
         this.ripples = [];
         this.palette = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
-        this.colorIdx = 0;
+        
+        // Multi-Mode Color State
+        this.currentColor = '#00FFFF';
+        this.isGradient = false;
+        this.gradientColors = ['#00FFFF', '#FF00FF'];
+        this.colorIdx = 0; // Sequential cycle for Analog restoration
+        this.engineSlide = 0; // 0 = Analog, 1 = Digital (Interpolated)
+        
         this.time = 0;
         
         // Structural Wave Params
@@ -80,9 +87,37 @@ class HorizonGrid {
     }
 
     triggerRipple() {
+        const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+        
+        if (boost > 0.5) {
+            // [ DIGITAL ENGINE ] - Weighted Stochastic Color Selection
+            const r = Math.random();
+            if (r < 0.70) {
+                // 70% Favor Cyan
+                this.currentColor = '#00FFFF';
+                this.isGradient = false;
+            } else if (r < 0.90) {
+                // 20% Gradient
+                this.isGradient = true;
+                this.gradientColors = [
+                    this.palette[Math.floor(Math.random() * this.palette.length)],
+                    this.palette[Math.floor(Math.random() * this.palette.length)]
+                ];
+            } else {
+                // 10% Random Solid
+                this.currentColor = this.palette[Math.floor(Math.random() * this.palette.length)];
+                this.isGradient = false;
+            }
+        } else {
+            // [ ANALOG ENGINE ] - Faithful Sequential Cycle Restoration
+            const idx = this.colorIdx % this.palette.length;
+            this.currentColor = this.palette[idx];
+            this.isGradient = false;
+            this.colorIdx++;
+        }
+
         const angle = (Math.random() - 0.5) * Math.PI * 0.6;
-        this.ripples.push(new Ripple(0, 0, 'DIRECTIONAL', angle, this.palette[this.colorIdx % this.palette.length]));
-        this.colorIdx++;
+        this.ripples.push(new Ripple(0, 0, 'DIRECTIONAL', angle, this.isGradient ? this.gradientColors[0] : this.currentColor));
     }
 
     project(x, y, z) {
@@ -137,6 +172,11 @@ class HorizonGrid {
 
     animate() {
         this.time += 1.0;
+        
+        // --- INTERPOLATED ENGINE TRANSITION ---
+        const targetBoost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+        this.engineSlide += (targetBoost - this.engineSlide) * 0.08;
+
         this.draw();
         this.ripples = this.ripples.filter(r => r.update());
         requestAnimationFrame(() => this.animate());
@@ -147,8 +187,12 @@ class HorizonGrid {
         const w = this.width;
         const h = this.height;
 
-        // Reset with Trails
-        ctx.fillStyle = 'rgba(8, 9, 10, 0.25)'; 
+        // --- DYNAMIC BACKGROUND FADES (Interpolated Restoration) ---
+        // Analog: rgba(8,9,10,0.25) -> Digital: rgba(0,0,0,0.15)
+        const slide = this.engineSlide || 0;
+        const grayVal = Math.floor(8 * (1.0 - slide));
+        const alphaVal = 0.25 - (0.10 * slide);
+        ctx.fillStyle = `rgba(${grayVal}, ${grayVal + 1}, ${grayVal + 2}, ${alphaVal})`;
         ctx.fillRect(0, 0, w, h);
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
@@ -211,8 +255,22 @@ class HorizonGrid {
 
                 // Edges
                 ctx.lineWidth = Math.min(1.5, p1.scale * 0.05);
-                const edgeColor = (this.ripples.length > 0) ? this.ripples[0].color : '#00FFFF';
-                ctx.strokeStyle = edgeColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
+                
+                const slide = this.engineSlide || 0;
+                if (slide > 0.5) {
+                    // DEEP BLACK ENGINE: Black lines
+                    ctx.strokeStyle = `rgba(0,0,0,${alpha * 0.8})`;
+                } else {
+                    // Standard color mode
+                    if (this.isGradient) {
+                        const grad = ctx.createLinearGradient(p1.x, p1.y, p3.x, p3.y);
+                        grad.addColorStop(0, this.gradientColors[0]);
+                        grad.addColorStop(1, this.gradientColors[1]);
+                        ctx.strokeStyle = grad;
+                    } else {
+                        ctx.strokeStyle = this.currentColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
+                    }
+                }
                 ctx.stroke();
             }
         }
