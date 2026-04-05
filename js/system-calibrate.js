@@ -36,7 +36,7 @@ class SystemCalibrator {
             background: rgba(10, 15, 20, 0.95);
             backdrop-filter: blur(15px);
             border-left: 1px solid var(--accent-color);
-            z-index: 1000;
+            z-index: 1000000;
             transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             padding: 20px;
             overflow-y: auto;
