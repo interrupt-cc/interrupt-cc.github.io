@@ -201,7 +201,7 @@ class StochasticPlayer {
         const drawer = document.getElementById('sp-drawer');
         if (!drawer) return;
         const isOpen = drawer.style.maxHeight !== '0px' && drawer.style.maxHeight !== '';
-        drawer.style.maxHeight = isOpen ? '0px' : '1200px';
+        drawer.style.maxHeight = isOpen ? '0px' : '1800px';
         drawer.style.borderTopWidth = isOpen ? '0px' : '1px';
         document.getElementById('sp-toggle').innerText = isOpen ? '+' : '−';
     }
@@ -320,6 +320,16 @@ class StochasticPlayer {
         archiveContent.className = 'acc-content';
         archiveContent.id = 'archive-content';
 
+        const calibrateHeader = document.createElement('div');
+        calibrateHeader.className = 'acc-header';
+        calibrateHeader.innerHTML = `> [ SYSTEM_CALIBRATION_HUB ] <span class="acc-status">[+]</span>`;
+        
+        const calibrateContent = document.createElement('div');
+        calibrateContent.className = 'acc-content';
+        if (window.SYSTEM_CALIBRATE) {
+            calibrateContent.appendChild(window.SYSTEM_CALIBRATE.generatePanel());
+        }
+
         // Style the accordions
         const accStyle = document.createElement('style');
         accStyle.innerText = `
@@ -343,11 +353,14 @@ class StochasticPlayer {
 
         signalHeader.onclick = () => toggleAcc(signalHeader, signalContent);
         archiveHeader.onclick = () => toggleAcc(archiveHeader, archiveContent);
+        calibrateHeader.onclick = () => toggleAcc(calibrateHeader, calibrateContent);
 
         drawer.appendChild(signalHeader);
         drawer.appendChild(signalContent);
         drawer.appendChild(archiveHeader);
         drawer.appendChild(archiveContent);
+        drawer.appendChild(calibrateHeader);
+        drawer.appendChild(calibrateContent);
 
         // 2. Accordion Track Engine - Inject into archiveContent
         for (const folder in this.trackMap) {

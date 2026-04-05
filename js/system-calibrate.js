@@ -1,11 +1,10 @@
 /**
  * system-calibrate.js - High-Fidelity CRT & Glitch Controller
- * Real-time hardware drawer for visual aesthetic tuning.
+ * Refactored as a component for the master Stochastic Player drawer.
  */
 
 class SystemCalibrator {
     constructor() {
-        this.isOpen = false;
         this.params = window.CRT_CONFIG || {
             pinch: 0.15,
             'p-interval': 4,
@@ -21,33 +20,15 @@ class SystemCalibrator {
             'g-falloff': 0.5,
             'g-alpha': 0.3
         };
-        this.injectUI();
     }
 
-    injectUI() {
-        const drawer = document.createElement('div');
-        drawer.id = 'calibrate-drawer';
-        drawer.style.cssText = `
-            position: fixed;
-            top: 0;
-            right: -320px;
-            width: 300px;
-            height: 100vh;
-            background: rgba(10, 15, 20, 0.95);
-            backdrop-filter: blur(15px);
-            border-left: 1px solid var(--accent-color);
-            z-index: 1000000;
-            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            padding: 20px;
-            overflow-y: auto;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-color);
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-        `;
+    generatePanel() {
+        const panel = document.createElement('div');
+        panel.style.cssText = `padding: 15px 0; background: rgba(0, 229, 255, 0.02);`;
 
         const header = `
-            <div style="font-size: 0.8rem; color: var(--accent-color); letter-spacing: 3px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); padding-bottom: 10px; margin-bottom: 20px;">
-                [ SYSTEM_CALIBRATE ]
+            <div style="font-size: 0.6rem; color: var(--accent-color); letter-spacing: 2px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 8px; margin-bottom: 15px; opacity: 0.8;">
+                [ CRT_HARDWARE_MODULE ]
             </div>
         `;
 
@@ -100,31 +81,20 @@ class SystemCalibrator {
                 `;
             });
         });
-
-        html += `<button id="btn-close-cal" class="sp-btn" style="width: 100%; margin-top: 20px;">DISPATCH_STATE</button>`;
         
-        drawer.innerHTML = html;
-        document.body.appendChild(drawer);
+        panel.innerHTML = html;
 
-        // Event Listeners
-        drawer.querySelectorAll('.sys-knob').forEach(knob => {
+        // Listeners for real-time visual sync
+        panel.querySelectorAll('.sys-knob').forEach(knob => {
             knob.oninput = (e) => {
                 const param = e.target.getAttribute('data-param');
                 const val = parseFloat(e.target.value);
-                window.CRT_CONFIG[param] = val;
+                if (window.CRT_CONFIG) window.CRT_CONFIG[param] = val;
                 this.params[param] = val;
             };
         });
 
-        document.getElementById('btn-close-cal').onclick = () => this.toggle();
-    }
-
-    toggle() {
-        this.isOpen = !this.isOpen;
-        const drawer = document.getElementById('calibrate-drawer');
-        if (drawer) {
-            drawer.style.right = this.isOpen ? '0px' : '-320px';
-        }
+        return panel;
     }
 }
 
