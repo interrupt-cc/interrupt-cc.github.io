@@ -102,8 +102,8 @@ const fsSource = `
         }
 
         // 5. Dynamic Noise and Interference assembly
-        // Using the real-time noise floor uniform
-        float n = pow(random(uv + fract(u_time * 0.88)), 3.0) * u_noise_floor * 3.0; 
+        // Restored power-curve to 1.8 for much richer 'Analog' static (was 3.0)
+        float n = pow(random(uv + fract(u_time * 0.88)), 1.8) * u_noise_floor * 2.8; 
         
         // Randomized brightness intensities
         float primaryBrightness = 0.15 * random(vec2(floor(u_time * 10.0), 3.0));
