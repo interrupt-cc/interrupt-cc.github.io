@@ -115,10 +115,12 @@ class HorizonGrid {
                 const phi = d * r.wavelength - (this.time * 0.15);
                 wave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
             } else {
-                // Directional wave (transients)
+                // Directional wave (transients) - Reduced by 33% (0.5x) with Soft-Clipper
                 const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
                 const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
-                wave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.75;
+                let rawWave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
+                // Soft-ceiling to preserve dynamics but restrict spatial Magnitude
+                wave = Math.tanh(rawWave / 25.0) * 25.0;
             }
             yOffset += wave;
         });
