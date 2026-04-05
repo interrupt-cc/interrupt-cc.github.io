@@ -95,8 +95,8 @@ class HorizonGrid {
     getDeformation(x, z, activityScale, cloudEnv, maxZ) {
         let yOffset = 0;
         
-        // 1. Permanent 'Idol Swell'
-        yOffset += Math.sin(z * 0.05 - this.time * 0.02) * 8;
+        // 1. Permanent 'Idol Swell' (Now undulating TOWARDS the viewer)
+        yOffset += Math.sin(z * 0.05 + this.time * 0.02) * 8;
         
         // 2. Audio-active ripples
         this.ripples.forEach(r => {

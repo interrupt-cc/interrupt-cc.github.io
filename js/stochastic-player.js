@@ -302,9 +302,54 @@ class StochasticPlayer {
             .sp-track:hover { opacity: 1; color: var(--accent-color); }
         `;
         document.head.appendChild(style);
-        drawer.appendChild(ctrlPanel);
 
-        // 2. Accordion Track Engine
+        // 2. Master Accordion Headers
+        const signalHeader = document.createElement('div');
+        signalHeader.className = 'acc-header';
+        signalHeader.innerHTML = `> [ SIGNAL_STREAM_CONTROLS ] <span class="acc-status">[−]</span>`;
+        
+        const signalContent = document.createElement('div');
+        signalContent.className = 'acc-content active';
+        signalContent.appendChild(ctrlPanel);
+
+        const archiveHeader = document.createElement('div');
+        archiveHeader.className = 'acc-header';
+        archiveHeader.innerHTML = `> [ AUDIO_ARCHIVE_SELECTION ] <span class="acc-status">[+]</span>`;
+        
+        const archiveContent = document.createElement('div');
+        archiveContent.className = 'acc-content';
+        archiveContent.id = 'archive-content';
+
+        // Style the accordions
+        const accStyle = document.createElement('style');
+        accStyle.innerText = `
+            .acc-header { 
+                font-size: 0.75rem; color: var(--accent-color); letter-spacing: 2px; 
+                padding: 10px 0; border-bottom: 1px solid rgba(0, 229, 255, 0.1); 
+                cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+                user-select: none;
+            }
+            .acc-header:hover { color: var(--text-color); }
+            .acc-content { max-height: 0px; overflow: hidden; transition: max-height 0.4s ease; }
+            .acc-content.active { max-height: 1000px; }
+            .acc-status { font-size: 0.6rem; opacity: 0.6; }
+        `;
+        document.head.appendChild(accStyle);
+
+        const toggleAcc = (header, content) => {
+            const isActive = content.classList.toggle('active');
+            header.querySelector('.acc-status').innerText = isActive ? '[−]' : '[+]';
+        };
+
+        signalHeader.onclick = () => toggleAcc(signalHeader, signalContent);
+        archiveHeader.onclick = () => toggleAcc(archiveHeader, archiveContent);
+
+        drawer.appendChild(signalHeader);
+        drawer.appendChild(signalContent);
+        drawer.appendChild(archiveHeader);
+        drawer.appendChild(archiveContent);
+
+        // 2. Accordion Track Engine - Inject into archiveContent
         for (const folder in this.trackMap) {
             const folderWrap = document.createElement('div');
             folderWrap.innerHTML = `
@@ -335,7 +380,7 @@ class StochasticPlayer {
                 list.style.maxHeight = list.style.maxHeight === '500px' ? '0px' : '500px';
             };
             
-            drawer.appendChild(folderWrap);
+            archiveContent.appendChild(folderWrap);
         }
 
         root.appendChild(drawer);
