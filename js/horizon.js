@@ -92,13 +92,18 @@ class HorizonGrid {
         };
     }
 
-    getDeformation(x, z, activityScale, cloudEnv, maxZ) {
+    getDeformation(x, z, activityScale, cloudEnv, maxZ, midRMS) {
         let yOffset = 0;
         
         // 1. Permanent 'Idol Swell' (Now undulating TOWARDS the viewer)
         yOffset += Math.sin(z * 0.05 + this.time * 0.02) * 8;
         
-        // 2. Audio-active ripples
+        // 2. Audio Mid-Swell (Middle 3rd of RMS)
+        // Faster, tighter wave reflecting the body of the audio output (Magnitude ~12-15)
+        const midSwellPhi = z * 0.12 + this.time * 0.06;
+        yOffset += Math.sin(midSwellPhi) * (12 * midRMS);
+
+        // 3. Audio-active ripples (Transient Peaks)
         this.ripples.forEach(r => {
             const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
             // Combine ripple-local wavelength with global multiplier
@@ -137,6 +142,9 @@ class HorizonGrid {
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
         const cloudEnv = window.STOCHASTIC_AUDIO?.currentCloudEnv || 0;
+        // Middle Third of RMS (approx 0.25 to 0.70 range)
+        const midRMS = Math.max(0, Math.min(1.0, (rms - 0.25) / 0.45));
+
         // activityScale ONLY affects deformation amplitude
         const activityScale = 0.5 + (rms * 4.0) + (cloudEnv * 3.0);
         
@@ -162,10 +170,10 @@ class HorizonGrid {
                 const xR = (xI + 1) * stepX;
 
                 // Points of the mesh quad
-                const p1 = this.project(xL, this.getDeformation(xL, zN, activityScale, cloudEnv, maxZ), zN);
-                const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv, maxZ), zN);
-                const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv, maxZ), zF);
-                const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv, maxZ), zF);
+                const p1 = this.project(xL, this.getDeformation(xL, zN, activityScale, cloudEnv, maxZ, midRMS), zN);
+                const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv, maxZ, midRMS), zN);
+                const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv, maxZ, midRMS), zF);
+                const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv, maxZ, midRMS), zF);
 
                 if (!p1 || !p2 || !p3 || !p4) continue;
 
