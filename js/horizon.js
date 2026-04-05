@@ -69,9 +69,11 @@ class HorizonGrid {
         this.vanishX = this.width / 2;
         this.vanishY = this.height * 0.33; // Upper two-thirds (mapped to 1/3 from top)
         
-        // Calculate ground plane world-Y needed to hit the bottom of screen at Z=10
-        this.zStart = 10;
+        // Pushing the "Near Plane" pivot point further back (to Z=15)
+        // so that the actual start of the grid (Z=10) is already "behind/below" the viewer.
+        this.zStart = 15;
         this.groundY = - (this.height - this.vanishY) * this.zStart / this.focalLength;
+        this.zStart = 10; // Reset zStart to 10 for the loop pivot
     }
 
     triggerRipple() {
@@ -108,9 +110,10 @@ class HorizonGrid {
         const jitter = (Math.random() - 0.5) * 5.0 * cloudEnv;
         
         // 4. Edge Damping (Containment)
-        // sin window from 0 to 1 over the z-depth
-        const zNorm = Math.min(1.0, Math.max(0, (z - this.zStart) / (maxZ - this.zStart)));
-        const window = Math.pow(Math.sin(zNorm * Math.PI), this.edgeDamping);
+        // Modified: Only damp the far edge (horizon). Foreground stays active.
+        const zNorm = Math.min(1.0, Math.max(0, (z - this.zStart) / (maxZ * 0.8 - this.zStart)));
+        // Half-sin window: 1 at the front, 0 at the horizon
+        const window = 1.0 - Math.pow(zNorm, 2.0); 
         
         return this.groundY + (yOffset + jitter) * window;
     }
@@ -141,18 +144,17 @@ class HorizonGrid {
         const stepZ = 12.0;
         const stepX = 25.0;
 
-        // Draw mesh - start rows before the zStart to ensure they go past the camera
-        for (let zI = -5; zI < rows - 1; zI++) {
+        // Draw mesh - BACK-TO-FRONT for correct layering (Painter's Algorithm)
+        for (let zI = rows - 2; zI >= -8; zI--) {
             const scroll = (this.time * 0.8) % stepZ;
             const zN = (zI * stepZ) + scroll + this.zStart;
             const zF = ((zI + 1) * stepZ) + scroll + this.zStart;
             if (zN < 0.1) continue;
 
-            // Opacity is stable by Z distance only
-            const alpha = Math.max(0, 1.0 - (zN / (rows * stepZ))) * 0.8;
-            if (alpha <= 0.05) continue;
-
             const maxZ = (rows * stepZ) + this.zStart;
+            // Opacity is stable by Z distance only
+            const alpha = Math.min(0.8, Math.max(0, 1.0 - (zN / maxZ))) * 1.0;
+            if (alpha <= 0.05) continue;
 
             for (let xI = -cols/2; xI < cols/2; xI++) {
                 const xL = xI * stepX;
