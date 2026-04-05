@@ -250,7 +250,7 @@ class HorizonGrid {
                 ctx.closePath();
 
                 // Surface
-                ctx.fillStyle = `rgba(0, 139, 163, ${alpha * 0.2})`;
+                ctx.fillStyle = `rgba(0, 139, 163, ${alpha * 0.35})`;
                 ctx.fill();
 
                 // Edges
@@ -268,7 +268,7 @@ class HorizonGrid {
                         grad.addColorStop(1, this.gradientColors[1]);
                         ctx.strokeStyle = grad;
                     } else {
-                        ctx.strokeStyle = this.currentColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
+                        ctx.strokeStyle = this.currentColor + Math.floor(alpha * 220).toString(16).padStart(2, '0');
                     }
                 }
                 ctx.stroke();
