@@ -201,7 +201,7 @@ class StochasticPlayer {
         const drawer = document.getElementById('sp-drawer');
         if (!drawer) return;
         const isOpen = drawer.style.maxHeight !== '0px' && drawer.style.maxHeight !== '';
-        drawer.style.maxHeight = isOpen ? '0px' : '500px';
+        drawer.style.maxHeight = isOpen ? '0px' : '1200px';
         drawer.style.borderTopWidth = isOpen ? '0px' : '1px';
         document.getElementById('sp-toggle').innerText = isOpen ? '+' : '−';
     }
@@ -306,10 +306,10 @@ class StochasticPlayer {
         // 2. Master Accordion Headers
         const signalHeader = document.createElement('div');
         signalHeader.className = 'acc-header';
-        signalHeader.innerHTML = `> [ SIGNAL_STREAM_CONTROLS ] <span class="acc-status">[−]</span>`;
+        signalHeader.innerHTML = `> [ SIGNAL_STREAM_CONTROLS ] <span class="acc-status">[+]</span>`;
         
         const signalContent = document.createElement('div');
-        signalContent.className = 'acc-content active';
+        signalContent.className = 'acc-content';
         signalContent.appendChild(ctrlPanel);
 
         const archiveHeader = document.createElement('div');
