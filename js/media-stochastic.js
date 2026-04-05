@@ -47,21 +47,43 @@ class MediaSlot {
 
         // --- 2. TEMPORAL ENVELOPE & KINEMATICS ---
         const now = performance.now();
-        // Longer, more stochastic temporal envelopes
-        const duration = 6000 + Math.random() * 10000;
+        // Calculate logical ADSR phases first
+        const attack = 1000 + Math.random() * 2000;
+        const hold = 2000 + Math.random() * 5000; // Random hold time
+        const release = 2000 + Math.random() * 3000;
+        
         this.life = {
             start: now,
-            attack: 1000 + Math.random() * 2000,
-            hold: duration * (0.3 + Math.random() * 0.4),
-            release: 2000 + Math.random() * 3000,
-            duration: duration
+            attack: attack,
+            hold: hold,
+            release: release,
+            duration: attack + hold + release // Hard sync kill duration to envelope sum
         };
 
         // Amoeba Ambling parameters
         this.angle = Math.random() * Math.PI * 2;
-        this.vAngle = (Math.random() - 0.5) * 0.003; // Very slow rotation
-        this.vx = (Math.random() - 0.5) * 0.3; // Very slow movement
+        this.vx = (Math.random() - 0.5) * 0.3; 
         this.vy = (Math.random() - 0.5) * 0.3;
+        
+        // Kinematic state
+        this.scaleX = 1.0;
+        this.scaleY = 1.0;
+        
+        // Randomize physical distortion type (33% Stretch X, 33% Stretch Y, 33% Rotate)
+        const distortChoice = Math.random();
+        if (distortChoice < 0.33) {
+            this.vScaleX = (Math.random() * 0.0004) + 0.0001; // Positive stretch ONLY
+            this.vScaleY = 0;
+            this.vAngle = 0;
+        } else if (distortChoice < 0.66) {
+            this.vScaleX = 0;
+            this.vScaleY = (Math.random() * 0.0004) + 0.0001;
+            this.vAngle = 0;
+        } else {
+            this.vScaleX = 0;
+            this.vScaleY = 0;
+            this.vAngle = (Math.random() - 0.5) * 0.001; // Ultra slow, barely perceptible rotation
+        }
 
         this.effectType = Math.random() > 0.5 ? 'DIAGONAL_GRAD' : 'PIXELATE';
         this.alive = true;
@@ -159,6 +181,8 @@ class MediaSlot {
         this.rect.dx += this.vx;
         this.rect.dy += this.vy;
         this.angle += this.vAngle;
+        this.scaleX += this.vScaleX;
+        this.scaleY += this.vScaleY;
 
         if (elapsed < this.life.attack) {
             this.alpha = elapsed / this.life.attack;
@@ -181,11 +205,12 @@ class MediaSlot {
         ctx.globalAlpha = Math.min(1.0, this.alpha * 1.5); 
         ctx.globalCompositeOperation = this.blendMode; 
         
-        // Pivot to center of fragment for rotation
+        // Pivot to center of fragment for rotation & scale
         const cx = dx + dw / 2;
         const cy = dy + dh / 2;
         ctx.translate(cx, cy);
         ctx.rotate(this.angle);
+        ctx.scale(this.scaleX, this.scaleY);
         
         // Draw the static patch (centered on the translated pivot)
         ctx.drawImage(this.patchCanvas, 0, 0, this.patchCanvas.width, this.patchCanvas.height, -dw / 2, -dh / 2, dw, dh);
