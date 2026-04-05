@@ -170,9 +170,15 @@ const fsSource = `
 
         // --- FINAL POST-PROCESSING: SHADOW CRUSHER ---
         if (u_boost_contrast > 0.5) {
-            // Apply aggressive non-linear contrast (crush levels < 0.1 to black)
+            // 1. Criss-Cross Phosphor Lines (Sparse)
+            // Using u_ghost_id to randomize the pattern slightly
+            float grid = step(0.998, sin(uv.x * 35.0 + u_ghost_id)) + step(0.998, sin(uv.y * 35.0 + u_ghost_id));
+            float flicker = step(0.4, random(vec2(u_time * 15.0)));
+            finalColor += vec3(0.0, 0.4, 0.5) * grid * flicker; // Cyan-ish test lines
+
+            // 2. Apply aggressive non-linear contrast
             finalColor = pow(max(vec3(0.0), finalColor - 0.1), 1.35) * 1.4;
-            // Add a sharper grain on top of the crushed black
+            // 3. Add a sharper grain on top of the crushed black
             finalColor += vec3(random(uv + u_time) * 0.04);
         }
 
@@ -240,6 +246,10 @@ let ghostAlpha = 0;
 let ghostId = 0;
 let ghostSpread = [1.5, 1.5];
 let lastGhostTime = -10.0; // Force immediate start
+
+// Stochastic Fuzz Grain State
+let currentGrainScale = 1.0;
+let lastGrainShift = 0;
 
 function render(time) {
     time *= 0.001; // convert to seconds
@@ -389,7 +399,13 @@ function render(time) {
     gl.uniform1f(saturationUniformLocation, saturation);
     gl.uniform1f(aberrationUniformLocation, aberrationOffset);
     gl.uniform1f(pinchUniformLocation, (config.pinch || 0.15) + pinchSpike);
-    gl.uniform1f(noiseUniformLocation, config.noise || 0.25);
+    // Stochastic Fuzz Randomization
+    if (time - lastGrainShift > 4.0 + Math.random() * 4.0) {
+        currentGrainScale = 0.5 + Math.random() * 1.5;
+        lastGrainShift = time;
+    }
+    
+    gl.uniform1f(noiseUniformLocation, (config.noise || 0.25) * currentGrainScale);
     gl.uniform1f(bleedUniformLocation, config.bleed || 0.2);
     // ghost uniforms
     gl.uniform2f(ghostPosLoc, ghostPos[0], ghostPos[1]);

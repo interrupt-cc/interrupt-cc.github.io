@@ -56,6 +56,25 @@
         <input type="text" id="signal-broadcast" placeholder="..." autocomplete="off">
     </div>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script>
+        // Global Hardware State (Shared across all modules)
+        window.CRT_CONFIG = {
+            pinch: 0.15,
+            'p-interval': 4,
+            'p-random': 0.5,
+            noise: 0.25,
+            freq: 4,
+            snap: 1.8,
+            bleed: 0.2,
+            trails: 0.3,
+            stoch: 0.4,
+            'c-buffer': 0.15,
+            'g-bunch': 0.45,
+            'g-falloff': 0.5,
+            'g-alpha': 0.3,
+            'boost-contrast': 0
+        };
+    </script>
     <script src="js/static.js"></script>
     <script src="js/lines.js"></script>
     <script src="js/chat.js"></script>

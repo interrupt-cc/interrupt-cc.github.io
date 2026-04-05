@@ -40,7 +40,12 @@ class HorizonGrid {
         
         this.ripples = [];
         this.palette = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
-        this.colorIdx = 0;
+        
+        // Multi-Mode Color State
+        this.currentColor = '#00FFFF';
+        this.isGradient = false;
+        this.gradientColors = ['#00FFFF', '#FF00FF'];
+        
         this.time = 0;
         
         // Structural Wave Params
@@ -80,9 +85,27 @@ class HorizonGrid {
     }
 
     triggerRipple() {
+        // Weighted Stochastic Color Selection
+        const r = Math.random();
+        if (r < 0.70) {
+            // 70% Favor Cyan
+            this.currentColor = '#00FFFF';
+            this.isGradient = false;
+        } else if (r < 0.90) {
+            // 20% Gradient
+            this.isGradient = true;
+            this.gradientColors = [
+                this.palette[Math.floor(Math.random() * this.palette.length)],
+                this.palette[Math.floor(Math.random() * this.palette.length)]
+            ];
+        } else {
+            // 10% Random Solid
+            this.currentColor = this.palette[Math.floor(Math.random() * this.palette.length)];
+            this.isGradient = false;
+        }
+
         const angle = (Math.random() - 0.5) * Math.PI * 0.6;
-        this.ripples.push(new Ripple(0, 0, 'DIRECTIONAL', angle, this.palette[this.colorIdx % this.palette.length]));
-        this.colorIdx++;
+        this.ripples.push(new Ripple(0, 0, 'DIRECTIONAL', angle, this.isGradient ? this.gradientColors[0] : this.currentColor));
     }
 
     project(x, y, z) {
@@ -211,8 +234,22 @@ class HorizonGrid {
 
                 // Edges
                 ctx.lineWidth = Math.min(1.5, p1.scale * 0.05);
-                const edgeColor = (this.ripples.length > 0) ? this.ripples[0].color : '#00FFFF';
-                ctx.strokeStyle = edgeColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
+                
+                const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+                if (boost > 0.5) {
+                    // DEEP BLACK ENGINE: Black lines
+                    ctx.strokeStyle = `rgba(0,0,0,${alpha * 0.8})`;
+                } else {
+                    // Standard color mode
+                    if (this.isGradient) {
+                        const grad = ctx.createLinearGradient(p1.x, p1.y, p3.x, p3.y);
+                        grad.addColorStop(0, this.gradientColors[0]);
+                        grad.addColorStop(1, this.gradientColors[1]);
+                        ctx.strokeStyle = grad;
+                    } else {
+                        ctx.strokeStyle = this.currentColor + Math.floor(alpha * 160).toString(16).padStart(2, '0');
+                    }
+                }
                 ctx.stroke();
             }
         }
