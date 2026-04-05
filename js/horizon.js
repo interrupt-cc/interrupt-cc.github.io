@@ -81,10 +81,11 @@ class HorizonGrid {
     }
 
     project(x, y, z) {
-        const scale = this.focalLength / Math.max(0.1, z);
+        if (z < 0.1) return null; // Discard points behind or too close to camera
+        const scale = this.focalLength / z;
         return {
             x: this.vanishX + x * scale,
-            y: this.vanishY - y * scale, // Subtract y because screen space y is downward
+            y: this.vanishY - y * scale, 
             scale: scale
         };
     }
@@ -140,10 +141,12 @@ class HorizonGrid {
         const stepZ = 12.0;
         const stepX = 25.0;
 
-        for (let zI = 0; zI < rows - 1; zI++) {
+        // Draw mesh - start rows before the zStart to ensure they go past the camera
+        for (let zI = -5; zI < rows - 1; zI++) {
             const scroll = (this.time * 0.8) % stepZ;
             const zN = (zI * stepZ) + scroll + this.zStart;
             const zF = ((zI + 1) * stepZ) + scroll + this.zStart;
+            if (zN < 0.1) continue;
 
             // Opacity is stable by Z distance only
             const alpha = Math.max(0, 1.0 - (zN / (rows * stepZ))) * 0.8;
@@ -160,6 +163,8 @@ class HorizonGrid {
                 const p2 = this.project(xR, this.getDeformation(xR, zN, activityScale, cloudEnv, maxZ), zN);
                 const p3 = this.project(xR, this.getDeformation(xR, zF, activityScale, cloudEnv, maxZ), zF);
                 const p4 = this.project(xL, this.getDeformation(xL, zF, activityScale, cloudEnv, maxZ), zF);
+
+                if (!p1 || !p2 || !p3 || !p4) continue;
 
                 // Draw quad
                 ctx.beginPath();
