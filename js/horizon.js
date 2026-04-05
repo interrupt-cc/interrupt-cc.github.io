@@ -170,8 +170,9 @@ class HorizonGrid {
         const w = this.width;
         const h = this.height;
 
-        // Reset with Trails
-        ctx.fillStyle = 'rgba(8, 9, 10, 0.25)'; 
+        // Reset with Trails (Deepened in High-Contrast Mode)
+        const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
+        ctx.fillStyle = boost > 0.5 ? 'rgba(0, 0, 0, 0.15)' : 'rgba(8, 9, 10, 0.25)'; 
         ctx.fillRect(0, 0, w, h);
 
         const rms = window.STOCHASTIC_AUDIO?.currentRMS || 0;
