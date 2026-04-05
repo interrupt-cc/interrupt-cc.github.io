@@ -107,23 +107,21 @@ class HorizonGrid {
         yOffset += Math.sin(midSwellPhi) * (12 * midRMS);
 
         // 3. Audio-active ripples (Transient Peaks & Rain Drops)
+        let trigSum = 0;
         this.ripples.forEach(r => {
-            let wave = 0;
             if (r.type === 'CIRCULAR') {
-                // Point-source circular ripple
                 const d = Math.sqrt(Math.pow(x - r.x, 2) + Math.pow(z - r.z, 2));
                 const phi = d * r.wavelength - (this.time * 0.15);
-                wave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
+                trigSum += Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
             } else {
-                // Directional wave (transients) - Reduced by 33% (0.5x) with Soft-Clipper
                 const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
                 const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
-                let rawWave = Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
-                // Soft-ceiling to preserve dynamics but restrict spatial Magnitude
-                wave = Math.tanh(rawWave / 25.0) * 25.0;
+                trigSum += Math.sin(phi) * r.getAmplitude() * activityScale * 0.5;
             }
-            yOffset += wave;
         });
+        
+        // Final Master Compression: prevent additive "blowouts" when multiple ripples overlap
+        yOffset += Math.tanh(trigSum / 35.0) * 35.0;
 
         // 3. Cloud-peak Jitter
         const jitter = (Math.random() - 0.5) * 5.0 * cloudEnv;
