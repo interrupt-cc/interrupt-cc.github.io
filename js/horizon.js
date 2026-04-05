@@ -103,7 +103,8 @@ class HorizonGrid {
             const rx = x * Math.cos(r.angle) + z * Math.sin(r.angle);
             // Combine ripple-local wavelength with global multiplier
             const phi = (r.wavelength * (this.globalWavelength / 0.15)) * rx - (this.time * 0.12);
-            yOffset += Math.sin(phi) * r.getAmplitude() * activityScale;
+            // Attenuate by 25% (0.75x) to prevent excessive displacement
+            yOffset += Math.sin(phi) * r.getAmplitude() * activityScale * 0.75;
         });
 
         // 3. Cloud-peak Jitter
