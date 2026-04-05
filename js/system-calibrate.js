@@ -18,7 +18,8 @@ class SystemCalibrator {
             'c-buffer': 0.15,
             'g-bunch': 0.45,
             'g-falloff': 0.5,
-            'g-alpha': 0.3
+            'g-alpha': 0.3,
+            'boost-contrast': 0
         };
     }
 
@@ -36,6 +37,7 @@ class SystemCalibrator {
             {
                 title: 'SIGNAL_GEOMETRY',
                 controls: [
+                    { id: 'boost-contrast', label: 'SIGNAL_CONTRAST_BOOST', min: 0, max: 1, step: 1 },
                     { id: 'pinch', label: 'SINGULARITY_BREADTH', min: 0, max: 0.8, step: 0.01 },
                     { id: 'p-interval', label: 'GRAVITY_SPIKE_RATE', min: 0.25, max: 10, step: 0.25 },
                     { id: 'p-random', label: 'STOCHASTIC_DRIFT', min: 0, max: 1, step: 0.05 }

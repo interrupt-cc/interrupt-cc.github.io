@@ -49,6 +49,7 @@ const fsSource = `
     uniform float u_ghost_cbuffer;
     uniform vec2 u_ghost_spread;
     uniform float u_ghost_id;
+    uniform float u_boost_contrast;
 
     float random(vec2 co) {
         return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -120,17 +121,30 @@ const fsSource = `
         finalColor -= vec3(scanline);
 
         // 6. STOCHASTIC PHANTOM CLUSTER (INK CLOUD) - OVERTOP LAYER
-        // Moved to the very end to ensure it's not washed out by noise or bursts
         if (u_ghost_alpha > 0.01) {
             vec2 gUv = uv;
+            
+            // High-Contrast Scintillation Pulse
+            float scintillation = 1.0;
+            if (u_boost_contrast > 0.5) {
+                // High-frequency temporal jitter (60fps)
+                scintillation = random(vec2(u_time * 60.0, u_ghost_id));
+                scintillation = step(0.3, scintillation); // Sharp flicker
+            }
+
             if (u_ghost_cbuffer > 0.01) {
                 float gBand = step(0.1, random(vec2(floor(uv.y * 40.0), u_time * 2.5)));
-                if (gBand > 0.5) gUv.x += u_ghost_cbuffer * (random(vec2(u_time)) - 0.5);
+                if (gBand > 0.5) {
+                    float move = u_ghost_cbuffer * (random(vec2(u_time)) - 0.5);
+                    gUv.x += move;
+                    // If boost is ON, the drift physically warps the signal
+                    if (u_boost_contrast > 0.5) uv.x += move * 0.5;
+                }
             }
+
             // ATTRACTOR LOGIC
             vec2 rel = (gUv - u_ghost_pos) / u_ghost_spread;
             float distSq = dot(rel, rel);
-            // MASSIVE RELAXED FALLOFF for absolute visibility
             float attractor = exp(-distSq * 2.0); 
             
             float gridRes = 60.0;
@@ -149,9 +163,17 @@ const fsSource = `
                 float k = random(pUv + 99.0);
                 cmyk *= (1.0 - k * 0.2); 
                 
-                // ADDITIVE BLENDING OVER TOP
-                finalColor += cmyk * ghostMask * u_bleed * u_ghost_alpha * 1.5;
+                // ADDITIVE BLENDING OVER TOP with Scintillation
+                finalColor += cmyk * ghostMask * u_bleed * u_ghost_alpha * 1.5 * scintillation;
             }
+        }
+
+        // --- FINAL POST-PROCESSING: SHADOW CRUSHER ---
+        if (u_boost_contrast > 0.5) {
+            // Apply aggressive non-linear contrast (crush levels < 0.1 to black)
+            finalColor = pow(max(vec3(0.0), finalColor - 0.1), 1.35) * 1.4;
+            // Add a sharper grain on top of the crushed black
+            finalColor += vec3(random(uv + u_time) * 0.04);
         }
 
         gl_FragColor = vec4(finalColor, 1.0);
@@ -184,6 +206,7 @@ const ghostStochLoc = gl.getUniformLocation(program, "u_ghost_stoch");
 const ghostCBufferLoc = gl.getUniformLocation(program, "u_ghost_cbuffer");
 const ghostSpreadLoc = gl.getUniformLocation(program, "u_ghost_spread");
 const ghostIdLoc = gl.getUniformLocation(program, "u_ghost_id");
+const boostContrastLoc = gl.getUniformLocation(program, "u_boost_contrast");
 
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -375,6 +398,7 @@ function render(time) {
     gl.uniform1f(ghostCBufferLoc, (config['c-buffer'] !== undefined) ? config['c-buffer'] : 0.15);
     gl.uniform2f(ghostSpreadLoc, ghostSpread[0], ghostSpread[1]);
     gl.uniform1f(ghostIdLoc, ghostId);
+    gl.uniform1f(boostContrastLoc, config['boost-contrast'] || 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
