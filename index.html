@@ -167,12 +167,13 @@
         let isDragging = false;
         let startX, startY, initialX, initialY;
 
-        handle.addEventListener('mousedown', (e) => {
+        function dragStart(e) {
             if (e.target.tagName === 'BUTTON') return;
             isDragging = true;
             const rect = win.getBoundingClientRect();
-            startX = e.clientX;
-            startY = e.clientY;
+            // Handle touch vs mouse payload
+            startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
             initialX = rect.left;
             initialY = rect.top;
 
@@ -180,18 +181,35 @@
             win.style.left = initialX + 'px';
             win.style.top = initialY + 'px';
             win.style.cursor = 'grabbing';
-        });
+            
+            // Prevent scrolling underlying page while dragging
+            if(e.type.includes('touch')) e.preventDefault();
+        }
 
-        document.addEventListener('mousemove', (e) => {
+        function dragMove(e) {
             if (!isDragging) return;
-            win.style.left = (initialX + (e.clientX - startX)) + 'px';
-            win.style.top = (initialY + (e.clientY - startY)) + 'px';
-        });
+            // Handle touch vs mouse payload
+            const currentX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            win.style.left = (initialX + (currentX - startX)) + 'px';
+            win.style.top = (initialY + (currentY - startY)) + 'px';
+        }
 
-        document.addEventListener('mouseup', () => {
+        function dragEnd() {
             isDragging = false;
             win.style.cursor = 'auto';
-        });
+        }
+
+        // Bind Mouse
+        handle.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+
+        // Bind Touch
+        handle.addEventListener('touchstart', dragStart, {passive: false});
+        document.addEventListener('touchmove', dragMove, {passive: false});
+        document.addEventListener('touchend', dragEnd);
 
         // Gravity Spike Trigger
         function triggerSpike() {

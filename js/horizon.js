@@ -213,7 +213,8 @@ class HorizonGrid {
         const activityScale = 0.5 + (rms * 4.0) + (cloudEnv * 3.0);
         
         const rows = 30; // Z steps
-        const cols = 28; // X steps
+        const isMobile = window.innerWidth <= 768; // Screen ratio tracker
+        const cols = isMobile ? 12 : 28; // X steps
         const stepZ = 12.0;
         const stepX = 25.0;
 

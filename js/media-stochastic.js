@@ -32,7 +32,9 @@ class MediaSlot {
         const sx = Math.random() * (imgW - sw);
         const sy = Math.random() * (imgH - sh);
 
-        let dw = cw * (0.3 + Math.random() * 0.4);
+        // Use base dimension scaling so vertical mobile limits don't collapse width constraints
+        const baseScale = cw <= 768 ? 0.6 : 0.3; 
+        let dw = cw * (baseScale + Math.random() * 0.4);
         let dh = dw * (sh / sw); 
 
         if (Math.random() < 0.15) {
