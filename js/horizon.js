@@ -72,13 +72,13 @@ class HorizonGrid {
     }
 
     onResize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.canvas.width = w;
-        this.canvas.height = h;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
 
-        this.vanishY = h * 0.20; // Raised Horizon line
-        this.vanishX = w / 2;
+        this.vanishY = this.height * 0.20; // Raised Horizon line
+        this.vanishX = this.width / 2;
         
         // Pushing the "Near Plane" pivot point further back (to Z=15)
         // so that the actual start of the grid (Z=10) is already "behind/below" the viewer.
