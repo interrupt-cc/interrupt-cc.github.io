@@ -213,10 +213,12 @@ class HorizonGrid {
         const activityScale = 0.5 + (rms * 4.0) + (cloudEnv * 3.0);
         
         const rows = 30; // Z steps
-        const isMobile = window.innerWidth <= 768; // Screen ratio tracker
-        const cols = isMobile ? 12 : 28; // X steps
-        const stepZ = 12.0;
-        const stepX = 25.0;
+        const cols = 28; // X steps
+        
+        // Scale grid geometry proportionally to viewport width to preserve desktop composition density on mobile
+        const uiScale = Math.min(1.0, window.innerWidth / 1200);
+        const stepZ = 12.0 * uiScale;
+        const stepX = 25.0 * uiScale;
 
         // Draw mesh - BACK-TO-FRONT for correct layering (Painter's Algorithm)
         for (let zI = rows - 2; zI >= -8; zI--) {
