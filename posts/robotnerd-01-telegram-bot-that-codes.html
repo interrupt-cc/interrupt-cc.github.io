@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x7 // Day 1: A Telegram Bot That Codes</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x7: Day 1: A Telegram Bot That Codes</h2>
+                <p class="post-date">DATE: 2026-07-11 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>Every project has to start somewhere, and "somewhere" is almost never the
+elegant final architecture. RobotNerd started as a Telegram bot.</p>
+<p>Not because Telegram was the right home for it — it absolutely wasn't — but
+because Telegram let me spend <strong>zero seconds on UI</strong> and <strong>all seconds on the
+brain</strong>. A bot is just a webhook: you send it text, it sends text back. No
+screens to design, no layouts to debug, no build pipeline. The fastest path to
+"can this thing actually code?" was to ask it through a chat I already had open.</p>
+<h2>The Agent Loop</h2>
+<p>The core is a standard pattern by now, but it's worth stating plainly because
+every later phase is built on it. The agent is a loop:</p>
+<ol>
+<li>Send the conversation (system prompt + history) to an OpenAI-compatible
+   model with a set of <strong>tool definitions</strong>.</li>
+<li>The model either responds with text (done — show the user) or with one or
+   more <strong>tool calls</strong> (it wants to do something).</li>
+<li>Execute each tool call — <code>read_file</code>, <code>run_command</code>, whatever — and append
+   the results back into the history as tool messages.</li>
+<li>Loop. The model sees the results and decides what to do next.</li>
+</ol>
+<p>That's it. The intelligence is the model; the agent is the harness that gives
+the model hands. The art is entirely in <em>which hands</em> and <em>what happens when
+the hands fumble</em>.</p>
+<h2>The Tools</h2>
+<p>The tool set is deliberately small and deliberately general. Here's all of
+them:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list_directory</code></td>
+<td>See what's in a folder</td>
+</tr>
+<tr>
+<td><code>read_file</code></td>
+<td>Read a whole file</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td>Create or replace a file entirely</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td>Modify a file (full content, diff for approval)</td>
+</tr>
+<tr>
+<td><code>apply_patch</code></td>
+<td>Apply a unified diff — the token-efficient editor</td>
+</tr>
+<tr>
+<td><code>run_command</code></td>
+<td>Execute shell — builds, tests, git, anything</td>
+</tr>
+<tr>
+<td><code>change_project_directory</code></td>
+<td>Switch the working root</td>
+</tr>
+<tr>
+<td><code>start_background_process</code></td>
+<td>Launch a long-running server/watcher</td>
+</tr>
+<tr>
+<td><code>get_process_logs</code></td>
+<td>Read a background process's output</td>
+</tr>
+<tr>
+<td><code>kill_process</code></td>
+<td>Stop one</td>
+</tr>
+<tr>
+<td><code>list_processes</code></td>
+<td>See what's running</td>
+</tr>
+</tbody>
+</table>
+<p>The first six are the editor. <code>run_command</code> is the escape hatch — it can build,
+test, lint, <code>git commit</code>, install deps, anything a developer would type. The
+last four manage long-running processes, which matters because "start the dev
+server and watch its logs" is a thing a coding agent genuinely needs to do.</p>
+<h3><code>apply_patch</code>: The One That Matters</h3>
+<p>Here's a philosophical choice that paid off immediately. Most early "AI editor"
+implementations had the model output the <strong>entire new file</strong> for every edit. If
+you have a 400-line file and you want to change one line, you regenerate all 400
+lines. That's slow, expensive, and — critically — fragile. The model will
+<em>almost</em> reproduce the file, and the one line it drifts on is a silent bug.</p>
+<p>So there's <code>apply_patch</code>. The model outputs a standard unified diff:</p>
+<pre><code class="language-diff">--- a/src/server.js
++++ b/src/server.js
+@@ -42,7 +42,8 @@
+     return {
+       id,
+-      title: meta.title,
++      title: meta.title || `Session ${id}`,
++      fallback: !meta.title,
+     };
+</code></pre>
+<p>Only the changed lines and their context are generated. It's cheaper, it's
+auditable (you can see exactly what moved), and — because it later got a
+<strong>fuzzy fallback matcher</strong> — it's resilient. If the model's context lines don't
+<em>exactly</em> match the file (whitespace drift, off-by-one line numbers), the
+patcher tries to locate the nearest matching region instead of failing hard.</p>
+<p>This single tool probably saved more tokens and prevented more bugs than any
+other decision in the project.</p>
+<h2>The Two Problems That Eat Agents Alive</h2>
+<p>A tool-calling loop is powerful, and that's precisely the danger. Two failure
+modes will eat an autonomous agent alive if you don't build for them
+explicitly.</p>
+<h3>1. The Infinite Loop</h3>
+<p>The model gets stuck. It calls <code>run_command</code> to fix something, the fix doesn't
+work, so it calls <code>run_command</code> again — same command, same result, same
+conclusion, forever. Or it edits a file, the edit introduces a syntax error, it
+tries to fix the error, the fix introduces a different error, and it ping-pongs
+between two broken states until the context window overflows.</p>
+<p>The naive guard is an iteration cap: "stop after N turns." But that's a
+bludgeon. The interesting fix is <strong>structural loop detection</strong> — actually
+inspecting the sequence of tool calls for repetition. If the same tool is
+operating on the same target (same file path, same command) more than a couple
+times in a window, that's not progress; that's a rut. Detect it, interrupt, and
+inject a system message: <em>"You appear to be in a loop. Change your approach."</em></p>
+<p>This turned out to be the difference between an agent that occasionally spins
+its wheels and one that genuinely <em>self-corrects</em>. The reflection prompt is
+surprisingly effective — given the nudge, the model will step back, re-read the
+situation, and try something actually different.</p>
+<h3>2. Self-Destruction</h3>
+<p>The scarier one. The agent can run any shell command. The agent is also editing
+the very server it's running on. Sooner or later, it edits a file, introduces a
+syntax error, the process crashes — and now the thing that could fix it is the
+thing that's dead.</p>
+<p>This is the <strong>self-healing recovery</strong> system. It's a separate systemd service
+(<code>OnFailure</code>) that watches the agent process. When it dies, the recovery
+service:</p>
+<ol>
+<li>Runs <code>git stash</code> or <code>git checkout</code> to revert the working tree to the last
+   known-good state.</li>
+<li>Restarts the agent.</li>
+<li>Leaves a <strong>recovery notice</strong> — a file the agent reads on startup that says
+   <em>"your last edit crashed this process; here's what was reverted."</em></li>
+</ol>
+<p>So the agent wakes up, learns it nuked itself, and — because the notice is
+injected into its context — can investigate what went wrong without repeating
+it. It's an immune system. The agent can break itself, and it'll heal, and it'll
+<em>know</em> it healed, and it'll learn.</p>
+<p>There is something quietly uncanny about watching that work.</p>
+<h2>Multi-Provider LLM Support</h2>
+<p>One practical detail that mattered more than expected: the agent talks to the
+OpenAI SDK, but the <em>endpoint</em> is configurable. Point it at the real OpenAI
+API, or at a local Ollama instance on the Tailscale network, or at any
+OpenAI-compatible provider (DeepSeek, Cerebras, GLM).</p>
+<p>This meant I could experiment with different models for different jobs — a
+cheap fast model for the agent loop, a smarter one for the hard reasoning — and
+it meant the whole system could run offline on local hardware. The provider
+became a config knob, not an architecture decision.</p>
+<p>It also, later, became the seed of the tailnet provider-discovery feature:
+detect Ollama instances on the network, list their models, switch providers from
+the app. But that's a later devlog.</p>
+<h2>What Telegram Gave Us</h2>
+<p>For two days, Telegram was the perfect incubator. I could test the agent from
+my phone while walking to the kitchen. I could see the tool calls happen in
+real time as messages. I could focus entirely on the questions that mattered:</p>
+<ul>
+<li>Does the loop terminate?</li>
+<li>Are the guardrails catching the failure modes?</li>
+<li>Is <code>apply_patch</code> actually saving tokens?</li>
+<li>Can the agent recover from breaking itself?</li>
+</ul>
+<p>By the end of day two, the answer to all four was yes. The brain worked.</p>
+<p>The problem was that the brain was trapped inside a 4096-character-message,
+no-streaming, no-diff-rendering, no-approval-buttons Telegram chat. It was time
+to build a body.</p>
+<p>→ <em>Next: <a href="02-leaving-telegram.md">Leaving Telegram — building the phone app</a></em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>

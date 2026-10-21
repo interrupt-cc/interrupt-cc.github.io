@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x1 // Restoring Classic Deluge Filter Character in Community Firmware 1.2</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x1: Restoring Classic Deluge Filter Character in Community Firmware 1.2</h2>
+                <p class="post-date">DATE: 2026-08-07 | PROJECT: DELUGE_FIRMWARE</p>
+            </header>
+
+<h2>Overview</h2>
+<p>Synthstrom Audible’s open-source Deluge community firmware introduced amazing DSP features, including morphable filters and driven ladder filter modes. However, these changes altered the original frequency response and antialiased saturation of official firmware <code>4.1.4</code>. Presets crafted under pre-community firmware versions sounded noticeably different.</p>
+<p>This project implements dedicated, selectable <strong>Legacy Filter Modes</strong> for both Low-Pass and High-Pass filters, ensuring complete backwards compatibility with older presets while preserving all community features.</p>
+<hr />
+<h2>Technical Root Cause Analysis</h2>
+<p>During testing, an array indexing mismatch was uncovered when accessing <code>SpecificFilter</code> modes:
+1. <code>FilterMode::HPLADDER_LEGACY</code> was added after <code>SVF_NOTCH</code>, but <code>SpecificFilter::toMode()</code> calculated variant offsets based on <code>numForVariant</code> order: <code>{kNumLadders, kNumSVF, kNumHPLadders}</code>.
+2. Because <code>FilterFamily::HP_LADDER</code> assumes its base offset starts at <code>kNumLadders + kNumSVF</code> (index 7), placing <code>HPLADDER_LEGACY</code> before <code>HPLADDER</code> caused out-of-bounds array reads in the filter lookup tables.</p>
+<h3>Fix Applied:</h3>
+<ul>
+<li>Reordered <code>FilterMode::HPLADDER</code> and <code>FilterMode::HPLADDER_LEGACY</code> in <code>filter_config.h</code> so enum indices match <code>SpecificFilter</code> variant offsets.</li>
+<li>Synchronized <code>HPFMode</code> options order in <code>hpf_mode.h</code>.</li>
+</ul>
+<hr />
+<h2>Filter Modes Summary</h2>
+<h3>Low-Pass Filter Modes (LPF)</h3>
+<table>
+<thead>
+<tr>
+<th>Menu Display</th>
+<th>Internal Mode</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>12dB Legacy</strong></td>
+<td><code>TRANSISTOR_12DB_LEGACY</code></td>
+<td>Original clean pre-community LP12 response</td>
+</tr>
+<tr>
+<td><strong>24dB Legacy</strong></td>
+<td><code>TRANSISTOR_24DB_LEGACY</code></td>
+<td>Original clean pre-community LP24 response</td>
+</tr>
+<tr>
+<td><strong>12dB Ladder</strong></td>
+<td><code>TRANSISTOR_12DB</code></td>
+<td>Community firmware morph/saturation LP12</td>
+</tr>
+<tr>
+<td><strong>24dB Ladder</strong></td>
+<td><code>TRANSISTOR_24DB</code></td>
+<td>Community firmware morph/saturation LP24</td>
+</tr>
+<tr>
+<td><strong>Drive</strong></td>
+<td><code>TRANSISTOR_24DB_DRIVE</code></td>
+<td>Driven 24dB ladder filter</td>
+</tr>
+</tbody>
+</table>
+<h3>High-Pass Filter Modes (HPF)</h3>
+<table>
+<thead>
+<tr>
+<th>Menu Display</th>
+<th>Internal Mode</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HP Ladder</strong></td>
+<td><code>HPLADDER</code></td>
+<td>Community firmware HP ladder (with input FM morphing)</td>
+</tr>
+<tr>
+<td><strong>HP Legacy</strong></td>
+<td><code>HPLADDER_LEGACY</code></td>
+<td>Original pre-community HP ladder (no FM morphing, level 2 saturation)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Automatic Preset Mapping</h2>
+<p>XML preset loading in <code>filter_config.cpp</code> automatically maps legacy preset tags:
+* <code>"12dB"</code> -&gt; <code>FilterMode::TRANSISTOR_12DB_LEGACY</code>
+* <code>"24dB"</code> -&gt; <code>FilterMode::TRANSISTOR_24DB_LEGACY</code>
+* <code>"HPLadder"</code> -&gt; <code>FilterMode::HPLADDER_LEGACY</code></p>
+<p>Newer community presets save under <code>"12dBNew"</code>, <code>"24dBNew"</code>, and <code>"HPLadderNew"</code>.</p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>

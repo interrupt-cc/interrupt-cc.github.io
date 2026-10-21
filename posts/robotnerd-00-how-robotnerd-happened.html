@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x3 // How RobotNerd Happened</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x3: How RobotNerd Happened</h2>
+                <p class="post-date">DATE: 2026-07-19 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>I wanted a coding companion that lived on my phone.</p>
+<p>Not a terminal REPL with an autocomplete. Not a browser tab I'd forget was open.
+Something I could pull out of my pocket, say <em>"add an OAuth login flow,"</em> and
+have a real autonomous agent actually do it — read the files, write the code,
+run the build, and show me what changed — all over my own network, while I
+watched particles dance and a modem sang.</p>
+<p>I built it in nine days. This is how it happened.</p>
+<h2>The Premise</h2>
+<p>The shape of the thing was always clear:</p>
+<ul>
+<li>A <strong>shared agent</strong> living on my home server — the kind that calls tools, reads
+  and writes files, runs shell commands, and drives itself in a loop.</li>
+<li>A <strong>phone app</strong> as the interface — chat, streaming responses, inline approvals
+  for edits, push notifications.</li>
+<li><strong>My own network in between</strong> — Tailscale, because the agent needs to reach
+  the codebase and the phone needs to reach the agent, and I'm not opening ports
+  or depending on anyone's cloud.</li>
+</ul>
+<p>The agent was the brain. The phone was the body. The goal was to make talking
+to a codebase feel like talking to a person.</p>
+<h2>The Strange Part</h2>
+<p>Here's the bit that makes this worth a devlog instead of a project page:</p>
+<p><strong>I built the whole thing by pair-programming with the kind of agent it became.</strong></p>
+<p>Day one, it was a Telegram bot with an OpenAI SDK and a handful of file tools.
+I'd message it: <em>"refactor the state into a module."</em> It would. Then I'd say
+<em>"now make yourself a real app,"</em> and it did. By the end I was directing the
+work <em>through the app I'd just built it to become</em> — opening a session called
+<em>"multi-project: server + app updates"</em> and telling the agent to finish its own
+UI.</p>
+<p>It's self-referential in the way that's either elegant or slightly unsettling,
+depending on the hour.</p>
+<h2>The Stone Knife</h2>
+<p>One decision I'd make again every time: <strong>I never shut down the original
+Telegram bot.</strong></p>
+<p>The bot was crude — a webhook, no UI, no streaming, 4K message limits. But it
+was <em>solid</em>. It had loop detection and self-healing recovery. It had been
+battle-tested over two days of real work. So when I started building the shiny
+new Android app, I left the bot running.</p>
+<p>This turned out to matter enormously. The new app was the future, but it was
+new — it crashed, it stuttered, it needed iteration. And every time it did, I'd
+switch to Telegram, tell the bot what happened, and it would fix the app. Then
+I'd install the new build and keep going. The bot was my stone knife: the
+reliable tool I reached for while building the laser.</p>
+<p>Even now, as I write this, the Telegram bot is still running — alongside the new
+HTTP+SSE server, and the app. They're not rivals. They're the same brain with
+two mouths. Having that second mouth around while building the first was the
+most practical redundancy I could ask for.</p>
+<h2>The Big Win: A Local-First Software Hot Rod</h2>
+<p>Here's what I was really building toward, and what excites me most: <strong>a coding
+workflow that's local-first, modular, and self-enabling.</strong></p>
+<p>The agent talks to any OpenAI-compatible endpoint. Point it at a cloud API, or
+at an Ollama instance running on another machine on your tailnet, or at
+DeepSeek, Cerebras, GLM — whatever you want, whenever you want. The whole thing
+can run <strong>fully local, fully offline, on your own hardware.</strong> Or you swap in a
+cloud model for the hard reasoning and swap back. It's modular by design — a
+software hot rod where every part is swappable.</p>
+<p>But here's the part that makes it more than an app with a settings menu: <strong>it
+enables its own upgrade.</strong> The app doesn't just <em>have</em> options — it gives you
+the power to <em>create</em> new options, by writing software. You think of a feature,
+you tell the agent, it writes the code, it builds the APK, it publishes it to
+the APK server over Tailscale, and you install it on your phone — all in one
+loop, all on your own network, in minutes. The tool builds the tool.</p>
+<p>That's the workflow I wanted: a creative engine that stays as local as you want
+it, that you can reconfigure without asking anyone's permission, and that gets
+better every time you use it because <em>you're the one making it better.</em></p>
+<h2>The Arc</h2>
+<p>The build fell into five phases:</p>
+<p><strong>1. The brain (Jul 10–11).</strong> Start in Telegram — zero UI, instant transport,
+all focus on making an agent that doesn't destroy itself. The OpenAI
+function-calling loop, a token-efficient <code>apply_patch</code> tool, and the two
+guardrails that keep autonomous agents alive: structural loop detection and
+self-healing recovery. → <em><a href="01-telegram-bot-that-codes.md">Read the devlog</a></em></p>
+<p><strong>2. The body (Jul 12–13).</strong> Telegram is a fine incubator but a terrible home.
+So: a Jetpack Compose Android app, a new HTTP+SSE server, inline edit approvals,
+and — the thing that made the whole workflow real — an APK server over Tailscale
+that let the agent ship builds directly to my phone. The transport layer swaps;
+the brain stays; the bot stays. → <em><a href="02-leaving-telegram.md">Read the devlog</a></em></p>
+<p><strong>3. Making it survive (Jul 14).</strong> New apps crash. That's fine — I had the bot
+to fall back on, and the real achievement wasn't avoiding crashes, it was
+building a system where the app reports its own crashes and the agent fixes
+them. → <em><a href="03-making-it-not-crash.md">Read the devlog</a></em></p>
+<p><strong>4. Making it sing (Jul 14–15).</strong> A coding companion shouldn't go <em>ding</em>. It
+should sound alive. So: a generative audio engine — real FSK modem synthesis on
+Bell 103 carriers, dub-techno ninth-chord drones through dotted-eighth feedback
+delay and Schroeder reverb, the agent's actual response bytes modulated into
+modem chirps. No audio files. Everything computed at 44.1 kHz.
+→ <em><a href="04-i-synthesized-a-modem.md">Read the devlog</a></em></p>
+<p><strong>5. Growing up (Jul 18–19).</strong> One project became many. Sessions got titles,
+summaries, and a real history. The architecture evolved into a multi-project
+system — and taught a lesson about keeping your fallback around, because the
+original bot had been quietly holding sessions the whole time.
+→ <em><a href="05-going-multi-project.md">Read the devlog</a></em></p>
+<h2>By the Numbers</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Days</strong></td>
+<td>9 (Jul 10 → Jul 19, 2026)</td>
+</tr>
+<tr>
+<td><strong>Sessions</strong></td>
+<td>53 — across the Telegram bot and the app, interleaved</td>
+</tr>
+<tr>
+<td><strong>Commits</strong></td>
+<td>92 — 23 in the backend, 69 in the app</td>
+</tr>
+<tr>
+<td><strong>Backend</strong></td>
+<td>~5,100 lines of Node.js (HTTP+SSE server + the agent)</td>
+</tr>
+<tr>
+<td><strong>App</strong></td>
+<td>~8,000 lines of Kotlin (Jetpack Compose + a Wear OS module)</td>
+</tr>
+<tr>
+<td><strong>LLM providers</strong></td>
+<td>Cloud (Z.ai, DeepSeek, Cerebras) + local (Ollama on tailnet)</td>
+</tr>
+<tr>
+<td><strong>Synth voices</strong></td>
+<td>5-layer generative engine, ~600 lines, zero samples</td>
+</tr>
+</tbody>
+</table>
+<h2>The Hello World of Vibe Coding</h2>
+<p>Here's a thought I keep coming back to, and it's bigger than this project.</p>
+<p>Every programming era has its "hello world" — the first thing you learn. Print
+a string. Make a webpage. Wire up a REST API. They're trivial programs, but
+they teach the <em>shape</em> of the medium.</p>
+<p>What's the hello world of the vibe-coding era — the age where you build
+software by talking to an agent that writes the code for you?</p>
+<p>I think it might be this: <strong>build your tools to build your tools.</strong></p>
+<p>Your first project isn't a todo app. It's your own coding companion. Not because
+that's the easiest thing to build — it isn't — but because once you have it,
+every other project becomes dramatically faster. You're not learning a language
+anymore; you're learning to <em>steer</em> a system that does the typing. And the best
+way to learn that is to build the steering wheel yourself.</p>
+<p>This workflow — local models, your own network, an agent that writes and ships
+its own upgrades — it's a software hot rod. It's for people who want to keep
+their hands on the engine. And I think it's surprisingly teachable. The
+question isn't whether creative, seasoned engineers can do this — they can. The
+question is how we <em>teach</em> it. What's the curriculum? What's the first lesson?</p>
+<p>Maybe the first lesson is: don't write hello world. Build the thing that writes
+hello world for you.</p>
+<h2>What's Next</h2>
+<p>The <a href="../PROJECT_PLAN.md">PROJECT_PLAN.md</a> — written mid-build as a living
+blueprint — lays out the road ahead: project summaries injected into context so
+the agent never starts blind, a file browser for reviewing diffs on your own
+terms, session intelligence that titles and summarizes itself.</p>
+<p>But the foundation is done. You open the app, you see your projects, you see
+the history of everything the agent ever did for each one. You tap one and pick
+up where you left off. Or you start fresh and the agent gets to work.</p>
+<p>It sounds like a modem and it edits your code from across the network, and it
+runs on hardware I own. I'm pretty happy with it.</p>
+<hr />
+<p><em>This is the overview. The rest of the series goes deep on each phase — the
+actual code, the actual bugs, the actual fixes. Start with
+<a href="01-telegram-bot-that-codes.md">Day 1: A Telegram Bot That Codes</a>.</em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>
