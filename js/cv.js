@@ -152,7 +152,7 @@ class CarrierGate {
   start() {
     const status = document.getElementById('osc-status');
     if (status) {
-      status.innerText = 'STATUS: LISTENING // AUDIO CHANNEL ONLY';
+      status.innerText = 'STATUS: NEEDFUL PENDING';
       status.style.color = 'var(--text-color)';
     }
     canvas_touch_guard(this.canvas);
@@ -268,7 +268,7 @@ class CarrierGate {
     this.locked = true;
 
     const status = document.getElementById('osc-status');
-    if (status) status.innerText = 'RESONANCE LOCKED';
+    if (status) status.innerText = 'NEEDFUL PERFORMED';
     if (this.audio) this.audio.lockChime();
 
     const passphrase = String.fromCharCode(...DecryptManager._CARRIER_CODES);
