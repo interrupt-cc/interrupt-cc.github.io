@@ -40,15 +40,21 @@ const DecryptManager = (() => {
     const t = __VAULT_TABLES;
     const m = __VAULT_MASK;
     const a = Uint8Array.from(t.rA);
-    const c = Uint8Array.from(t.rC.map((b, i) => b ^ m[i % m.length]));
-    vault.set(canvas, { a, c });
-    // one-time handoff of the middle shard into a gate closure
+    // The tail shard stays masked at rest. Unmasking happens inside the
+    // live lock handler - the last step of the build-up, not at load.
+    const maskedC = Uint8Array.from(t.rC);
+    const mask = Uint8Array.from(m);
+    vault.set(canvas, { a, maskedC, mask });
+    // one-time handoff of the middle shard into a gate closure. The shard
+    // must be materialized HERE - the module tables are burned below, and a
+    // lazy read at first gate construction would find null.
     shardBHandle = (() => {
       let taken = false;
+      const b = Uint8Array.from(t.rB);
       return () => {
         if (taken) return null;
         taken = true;
-        return Uint8Array.from(t.rB);
+        return b;
       };
     })();
     // burn the readable module state: fragments survive only in the WeakMap
@@ -136,7 +142,10 @@ const DecryptManager = (() => {
       // every range still passes - this is a cost heuristic, not a secret.)
       this.holdMs = 2600 + Math.random() * 1200;     // 2600 .. 3800
       this.gapLimitMs = 600 + Math.random() * 250;   // 600 .. 850
-      this.jitterFloorMs = 0.6 + Math.random() * 0.8;// 0.6 .. 1.4
+      // Organic-cadence floor as a coefficient of variation (sd/mean of
+      // recent pointer intervals). Fixed-cadence automation sits ~0.02-0.05;
+      // real input pipelines and hands sit well above.
+      this.cvFloor = 0.05 + Math.random() * 0.04;    // 0.05 .. 0.09
       this.recentMin = 3 + Math.floor(Math.random() * 3); // 3 .. 5 per 500ms
 
       // Lock state
@@ -147,7 +156,6 @@ const DecryptManager = (() => {
       this.locked = false;
       this.rafId = null;
       this.time = 0;
-      this.blipped = false;
 
       // Decorative chord traces (constant, carry no state)
       this.chordFrequencies = [261.63, 311.13, 392.00, 466.16];
@@ -169,6 +177,14 @@ const DecryptManager = (() => {
       }
       canvas_touch_guard(this.canvas);
       spinChaff();
+
+      // The gate is audible the moment it opens. The DECRYPT_SIGS click is
+      // the user gesture: create the instrument here, confirm with a blip,
+      // and run a soft idle drone so a visitor who has not grabbed the scope
+      // yet still hears that the wire is live. The idle wobble is a fixed
+      // decorative rate - it carries no carrier information.
+      this.audio = new GateSynth();
+      this.audio.armOpen();
 
       this.canvas.addEventListener('pointerdown', this._onDown = (e) => this.onDown(e));
       this.canvas.addEventListener('pointermove', this._onMove = (e) => this.onMove(e));
@@ -198,9 +214,8 @@ const DecryptManager = (() => {
       try { this.canvas.setPointerCapture(e.pointerId); } catch (err) {}
       this.dragging = true;
       if (!this.audio) this.audio = new GateSynth();
-      await this.audio.resume();
+      try { await this.audio.resume(); } catch (err) { /* arm anyway */ }
       this.audio.setDroneOn(true);
-      if (!this.blipped) { this.blipped = true; this.audio.openBlip(); }
       this.handleAim(e);
     }
 
@@ -216,8 +231,10 @@ const DecryptManager = (() => {
       this.eventTimes.length = 0;
       // lockAccum deliberately survives a quick re-grab: judgeLock's gap
       // limit already voids credit after a real pause, so this only forgives
-      // humans who release and re-tune without losing resonance.
-      if (this.audio) this.audio.setDroneOn(false);
+      // humans who release and re-tune without losing resonance. Audio falls
+      // back to the quiet idle drone rather than muting, so the wire stays
+      // findable between grabs.
+      if (this.audio) this.audio.setIdle();
     }
 
     handleAim(e) {
@@ -246,22 +263,24 @@ const DecryptManager = (() => {
       this.lastMoveT = now;
 
       if (Math.abs(df) > 3) { this.lockAccum = 0; return; }
-      // A long park (or an inhuman stream) zeroes the credit: resonance must
-      // be actively held, not visited twice. Credit accrues from real elapsed
-      // time between consecutive qualifying events.
-      if (dt > this.gapLimitMs || !this.streamLooksHuman()) { this.lockAccum = 0; return; }
+      // A real pause voids the credit: resonance must be actively held, not
+      // visited twice. A clock-like stream (see streamIsOrganic) never
+      // accrues at all - it just earns nothing, event after event.
+      if (dt > this.gapLimitMs) { this.lockAccum = 0; return; }
+      if (!this.streamIsOrganic()) return;
 
       this.lockAccum += Math.min(dt, 120);
       if (this.lockAccum >= this.holdMs) this.unlock();
     }
 
-    // Resonance only accumulates under an input stream that looks like a hand:
-    // dense events with irregular timing. Injected coordinate dumps and fixed
-    // -cadence automation hold no clock here.
-    streamLooksHuman() {
+    // Resonance only accrues under an input stream that looks like a hand:
+    // dense events whose timing varies. The metric is the coefficient of
+    // variation of recent intervals - scale-free, so it rejects fixed-rate
+    // schedulers at any cadence while passing real pipelines at any speed.
+    streamIsOrganic() {
       const t = this.eventTimes;
       const n = t.length;
-      if (n < 6) return false;
+      if (n < 7) return false;
       let recent = 0;
       for (let i = n - 1; i >= 0; i--) {
         if (t[n - 1] - t[i] <= 500) recent++;
@@ -269,12 +288,13 @@ const DecryptManager = (() => {
       }
       if (recent < this.recentMin) return false;
 
+      const k = Math.min(12, n - 1);
       const intervals = [];
-      for (let i = Math.max(1, n - 8); i < n; i++) intervals.push(t[i] - t[i - 1]);
-      if (intervals.length < 4) return false;
+      for (let i = n - k; i < n; i++) intervals.push(t[i] - t[i - 1]);
       const mean = intervals.reduce((a, v) => a + v, 0) / intervals.length;
+      if (mean <= 0) return false;
       const variance = intervals.reduce((a, v) => a + (v - mean) * (v - mean), 0) / intervals.length;
-      return Math.sqrt(variance) >= this.jitterFloorMs;
+      return Math.sqrt(variance) / mean >= this.cvFloor;
     }
 
     async unlock() {
@@ -286,28 +306,29 @@ const DecryptManager = (() => {
       if (this.audio) this.audio.lockChime();
 
       try {
-        // Private assembly. The passphrase exists whole only as this
-        // expression's argument; every prerequisite lives in closures, the
-        // WeakMap, or state that only a trusted, held pointer stream built.
+        // Final assembly of the build-up. The shards recombine HERE, inside
+        // the gate that earned them, and are imported straight into WebCrypto
+        // as a non-extractable AES-GCM key. No passphrase string ever exists;
+        // there is no password-taking function left to hook. A console watch
+        // on any global sees only a CryptoKey handle - the raw material
+        // crosses exactly one boundary (importKey) and is zeroed before the
+        // first decrypt lands.
         const parts = vault.get(this.canvas);
         const b = this._shardB;
         if (!parts || !b) throw new Error('VAULT_SEALED');
-        if (this.lockAccum < this.holdMs || !this.streamLooksHuman()) {
+        if (this.lockAccum < this.holdMs || !this.streamIsOrganic()) {
           throw new Error('CARRIER KEY MISMATCH');
         }
-        const key = new Uint8Array(parts.a.length + b.length + parts.c.length);
-        key.set(parts.a, 0);
-        key.set(b, parts.a.length);
-        key.set(parts.c, parts.a.length + b.length);
-        const passphrase = String.fromCharCode(...key);
-        key.fill(0);
-
-        const redactedElms = document.querySelectorAll('.redacted:not(.decoy)');
-        for (let el of redactedElms) {
-          const blob = el.getAttribute('data-blob');
-          if (!blob) continue;
-          const decodedText = await STOCHASTIC_ENCRYPT.decrypt(blob, passphrase);
-          aberration(el, decodedText);
+        const material = new Uint8Array(parts.a.length + b.length + parts.maskedC.length);
+        material.set(parts.a, 0);
+        material.set(b, parts.a.length);
+        for (let i = 0; i < parts.maskedC.length; i++) {
+          material[parts.a.length + b.length + i] = parts.maskedC[i] ^ parts.mask[i % parts.mask.length];
+        }
+        try {
+          await this.decryptManifest(material);
+        } finally {
+          material.fill(0);
         }
       } catch (e) {
         if (status) {
@@ -331,6 +352,35 @@ const DecryptManager = (() => {
       }, 450);
 
       this.dispose();
+    }
+
+    // The manifest decrypt loop runs privately on crypto.subtle. Per blob:
+    // parse salt||iv||ciphertext, derive a fresh non-extractable AES-GCM key
+    // from the shared material over that blob's salt, decrypt. This mirrors
+    // crypt-lib exactly (PBKDF2-SHA256 x100k, AES-GCM) minus the password
+    // parameter that made the old path hookable.
+    async decryptManifest(material) {
+      const subtle = crypto.subtle;
+      const decoder = new TextDecoder();
+      const redactedElms = document.querySelectorAll('.redacted:not(.decoy)');
+      for (let el of redactedElms) {
+        const b64 = el.getAttribute('data-blob');
+        if (!b64) continue;
+        const bin = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+        const salt = bin.slice(0, 16);
+        const iv = bin.slice(16, 28);
+        const data = bin.slice(28);
+        const baseKey = await subtle.importKey('raw', material, 'PBKDF2', false, ['deriveKey']);
+        const aesKey = await subtle.deriveKey(
+          { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+          baseKey,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['decrypt']
+        );
+        const plain = await subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, data);
+        aberration(el, decoder.decode(plain));
+      }
     }
 
     drawDecor() {
@@ -382,6 +432,9 @@ const DecryptManager = (() => {
    * drone and the tremolo sidebands, so capture + FFT reveals exactly
    * what the ear hears: how far, which way. The carrier itself is never
    * emitted.
+   *
+   * Lifecycle: armOpen() at gate open (blip + idle drone), full steering
+   * while the pointer is down, setIdle() between grabs, lockChime() on win.
    */
   class GateSynth {
     constructor() {
@@ -430,6 +483,25 @@ const DecryptManager = (() => {
 
     async resume() {
       if (this.ctx.state === 'suspended') await this.ctx.resume();
+    }
+
+    // Called at gate open, inside the DECRYPT_SIGS click gesture: confirm
+    // the channel with a blip and settle into a soft idle drone so sound
+    // is self-evident before the visitor ever grabs the scope.
+    armOpen() {
+      this.ctx.resume().catch(() => {});
+      this.openBlip();
+      this.setIdle();
+    }
+
+    // Quiet attention state between drags. Fixed wobble rate and centered
+    // pan: carries no carrier information.
+    setIdle() {
+      const t = this.ctx.currentTime;
+      this.preGain.gain.setTargetAtTime(0.22, t, 0.3);
+      this.lfoDepth.gain.setTargetAtTime(0.10, t, 0.3);
+      this.lfo.frequency.setTargetAtTime(2.2, t, 0.3);
+      if (this.panner) this.panner.pan.setTargetAtTime(0, t, 0.3);
     }
 
     setDroneOn(on) {
@@ -548,3 +620,5 @@ const DecryptManager = (() => {
     aberrationTransition: (el, finalOutput) => aberration(el, finalOutput),
   };
 })();
+
+document.addEventListener('DOMContentLoaded', DecryptManager.init);

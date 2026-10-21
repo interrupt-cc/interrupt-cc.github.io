@@ -25,6 +25,18 @@ async function main() {
     if (cv.includes('_CARRIER_CODES')) fail('burned table name _CARRIER_CODES is back in cv.js');
     if (/revealAll\s*:\s*async\s*\(\s*\w+\s*\)/.test(cv)) fail('revealAll accepts an argument again');
     if (!/const __VAULT_TABLES = \{"rA"/.test(cv)) fail('vault tables block missing from cv.js');
+    // The unlock must end at the WebCrypto boundary, not at a password-taking
+    // global: no passphrase string may be materialized and handed to any
+    // decrypt call. Hooking a global must yield a CryptoKey, never a string.
+    if (/String\.fromCharCode\(\.\.\.key\)/.test(cv)) fail('unlock materializes the passphrase string again');
+    if (/STOCHASTIC_ENCRYPT\.decrypt\((?![^)]*['"]40-240['"])/.test(cv)) {
+        const calls = cv.match(/STOCHASTIC_ENCRYPT\.decrypt\([^)]*\)/g) || [];
+        for (const call of calls) {
+            if (!/['"]40-240['"]/.test(call)) fail(`non-decoy decrypt via global found: ${call.trim()}`);
+        }
+    }
+    if (!/\.importKey\('raw', material/.test(cv)) fail('unlock must import raw key material in-closure');
+    if (!/decryptManifest/.test(cv)) fail('private manifest decrypt loop missing');
 
     // 2. Chaff archive exists and carries a real crowd of tables
     const chaffPath = path.join(ROOT, 'manifest/chaff.js');
