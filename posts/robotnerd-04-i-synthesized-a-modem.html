@@ -85,9 +85,9 @@
 
 <p>Every app needs a soul. Most find it in the interaction design, the
 typography, the motion. RobotNerd found it in a 300-baud acoustic coupler.</p>
-<p>This is the devlog I most wanted to write, because the audio engine is the part
-of this project I'm proudest of, and it's the part that's hardest to explain
-without sounding unhinged. So let me just say what it is and then show you how.</p>
+<p>This is the devlog I most wanted to write, because the audio engine is the
+heart of this project, and it's the part that's hardest to explain without
+sounding unhinged. So let me just say what it is and then show you how.</p>
 <p><strong>The app doesn't have any audio files. Every sound it makes is synthesized in
 real time, sample by sample, at 44.1 kHz, in about 600 lines of Kotlin.</strong></p>
 <p>There's a drone bed of ninth chords played as dub-techno stabs through a
@@ -165,7 +165,7 @@ feeding two all-pass filters in series for diffusion. It's a cavernous, dense
 tail. The dry stabs are quiet; the delay + reverb cloud <em>is</em> the sound.</p>
 <p>The master mix balances it: a little dry stab, a lot of delay, a wash of reverb.</p>
 <h2>The Breakthrough: Harmonic Locking</h2>
-<p>Here's the problem I almost shipped, and the fix I'm most proud of.</p>
+<p>Here's the problem I almost shipped, and the fix that saved it.</p>
 <p>The FSK used fixed Bell 103 frequencies: 1270/1070 and 2225/2025 Hz. But the
 drone underneath is playing <em>chords</em> — Am9, Dm9, etc. And 1270 Hz has no
 harmonic relationship to any of those notes. So the modem chirps <em>clashed</em>
