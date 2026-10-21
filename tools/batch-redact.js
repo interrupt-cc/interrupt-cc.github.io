@@ -12,8 +12,11 @@ async function processTemplate() {
 
     if (!templatePath || !outputPath || !password) {
         console.error('\n[SIGNAL_ERROR]: Missing arguments');
-        console.log('Usage: node tools/batch-redact.js manifest/cv-template.html manifest/cv.html 40-240');
-        console.log('NOTE: The STOCHASTIC_OVERRIDE password must be formatted as "Amp-Freq" (e.g., "40-240")\n');
+        console.log('Usage: node tools/batch-redact.js manifest/cv-template.html manifest/cv.html <PASSPHRASE>');
+        console.log('NOTE: Use a LONG RANDOM passphrase (e.g. `openssl rand -base64 18`).');
+        console.log('      The retired "Amp-Freq" strings (e.g. "40-240") are decoy bait now.');
+        console.log('      Paste the emitted CARRIER_CODES array into js/cv.js (_CARRIER_CODES),');
+        console.log('      otherwise the rebuilt manifest can never decrypt.\n');
         process.exit(1);
     }
 
@@ -42,7 +45,14 @@ async function processTemplate() {
         }
 
         fs.writeFileSync(outputPath, content);
-        console.log(`\n[SIGNAL_SUCCESS]: MANIFEST_WRITTEN_TO: ${outputPath}\n`);
+        console.log(`\n[SIGNAL_SUCCESS]: MANIFEST_WRITTEN_TO: ${outputPath}`);
+
+        // Emit the runtime key assembly for js/cv.js. The passphrase must
+        // never appear as greppable text in served source; only this array.
+        const codes = [...password].map(c => c.charCodeAt(0));
+        console.log('--- PASTE INTO js/cv.js (_CARRIER_CODES) ---');
+        console.log(`_CARRIER_CODES: [${codes.join(',')}],`);
+        console.log('--------------------------------------------\n');
 
     } catch (err) {
         console.error(`\n[SIGNAL_ERROR]: ${err.message}\n`);
