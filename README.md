@@ -28,8 +28,8 @@ A zero-dependency, isomorphic PII redaction system built on native **SubtleCrypt
 
 ### Developer Tools:
 - **CLI Encryptor**: `node tools/crypt-cli.js encrypt "[DATA]" "[PASS]"`
-- **Batch Redactor**: `node tools/batch-redact.js manifest/cv-template.html manifest/cv.html [PASS]` (Automated build process).
-- **Verification Suite**: `node tests/test-cli.js` or `tests/test-browser.html` (Isomorphic testing).
+- **Batch Redactor**: `node tools/batch-redact.js manifest/cv-template.html manifest/cv.html [PASS]` (Automated build process; also writes `manifest/chaff.js`). Paste the emitted `__VAULT_TABLES` / `__VAULT_MASK` block into `js/cv.js`, then `node tests/test-vault.js` to confirm the sharded vault still opens the manifest.
+- **Verification Suite**: `node tests/test-cli.js` + `node tests/test-vault.js` or `tests/test-browser.html` (Isomorphic testing).
 
 ## 04: BUILD_MANIFEST
 This project prioritizes **Zero-Trust Supply-Chain Security**. No third-party NPM libraries are used for security or core logic.
