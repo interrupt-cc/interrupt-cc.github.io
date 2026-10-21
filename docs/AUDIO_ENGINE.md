@@ -48,11 +48,11 @@ The core background drone of the signal feed is achieved via mathematically gene
 
 ## 04: CARRIER_HUNT (Audio-Domain Resonance Lock)
 
-The `STOCHASTIC_OVERRIDE` puzzle (v3) hides a carrier tone whose frequency is rolled **per session** from browser entropy inside a randomized pitch band (~140-1120 Hz). There is no visual target wave, no numeric readout, and no grep-able passphrase: the scope draws only stateless decorative chord traces.
+The `STOCHASTIC_OVERRIDE` puzzle (v3) hides a carrier tone whose frequency is rolled **per session** from browser entropy inside a randomized pitch band (~500-1270 Hz, kept entirely above the sub-500 murk). There is no visual target wave, no numeric readout, and no grep-able passphrase: the scope draws only stateless decorative chord traces.
 
 **The only feedback channel is auditory.** `js/cv.js` (`GateSynth`) drives a fixed drone through a tremolo gain and a stereo panner:
 
-- **Drone = 220 Hz fundamental + 330 Hz fifth** (v2's 110 Hz sub-bass was physically inaudible on laptop speakers — the entire signal sat below the reproduction band). A short two-note `openBlip` confirms the instrument is armed.
+- **Drone = 660 Hz fundamental + 990 Hz soft partial** (v2's 110 Hz sub-bass was physically inaudible on laptop speakers; the whole gate now sits above 500 Hz with the hunt band). A short two-note `openBlip` confirms the instrument is armed.
 - **Level floor = 0.45** (`0.45 + 0.4 * vertical`): grabbing the canvas center no longer clamps the output to silence.
 - **Tremolo rate = |distance|** to the carrier (log-mapped, 11 Hz cap so the wobble reads as rhythm, not pitch).
 - **Pan = direction** (drone sits left, drag left; sits right, drag right; centers as you converge).

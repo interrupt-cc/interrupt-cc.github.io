@@ -131,8 +131,8 @@ const DecryptManager = (() => {
 
       // Session pitch band. Rolled fresh on every visit: no coordinate,
       // screenshot or captured audio from a previous session helps.
-      this.fLo = 140 + Math.random() * 180;          // 140 .. 320
-      this.span = 520 + Math.random() * 280;         // band span 520 .. 800
+      this.fLo = 500 + Math.random() * 120;          // 500 .. 620
+      this.span = 400 + Math.random() * 250;         // band span 400 .. 650
       this.fHi = this.fLo + this.span;
       this.fRef = this.fLo + Math.random() * this.span; // hidden carrier
 
@@ -424,7 +424,8 @@ const DecryptManager = (() => {
   /**
    * GateSynth - self-contained WebAudio feedback instrument.
    *
-   * Signal chain: fixed drone (220Hz fundamental + soft 330Hz fifth) ->
+   * Signal chain: fixed drone (660Hz fundamental + soft 990Hz partial,
+   * kept above 500 with the hunt band) ->
    * tremolo gain (LFO rate = distance to carrier) -> stereo panner
    * (direction) -> out. The band is chosen to sit inside what laptop
    * speakers actually reproduce; the old 110Hz sub-bass drone was
@@ -443,10 +444,10 @@ const DecryptManager = (() => {
 
       this.droneA = this.ctx.createOscillator();
       this.droneA.type = 'sine';
-      this.droneA.frequency.value = 220;
+      this.droneA.frequency.value = 660;
       this.droneB = this.ctx.createOscillator();
       this.droneB.type = 'sine';
-      this.droneB.frequency.value = 330;
+      this.droneB.frequency.value = 990;
       this.harmonicGain = this.ctx.createGain();
       this.harmonicGain.gain.value = 0.22;
 
