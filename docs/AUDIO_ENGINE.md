@@ -46,22 +46,24 @@ The core background drone of the signal feed is achieved via mathematically gene
 
 ---
 
-## 04: CARRIER_HUNT (Audio-Domain Resonance Lock)
+## 04: Fuzzy AES-GCM (Cryptographic Forgiveness)
 
-The `STOCHASTIC_OVERRIDE` puzzle (v3) hides a carrier tone whose frequency is rolled **per session** from browser entropy inside a randomized pitch band (~500-1270 Hz, kept entirely above the sub-500 murk). There is no visual target wave, no numeric readout, and no grep-able passphrase: the scope draws only stateless decorative chord traces.
+The `STOCHASTIC_OVERRIDE` puzzle requires you to physically match the frequency of a carrier wave on an oscilloscope visualizer. This deterministic layout maps your `<canvas>` drop coordinates onto an exact frequency and amplitude payload (e.g., `40-240`).
 
-**The only feedback channel is auditory.** `js/cv.js` (`GateSynth`) drives a fixed drone through a tremolo gain and a stereo panner:
+The `batch-redact.js` compiler bakes this exact string into the AES-GCM cryptographic headers of your sensitive CV blocks.
 
-- **Drone = 660 Hz fundamental + 990 Hz soft partial** (v2's 110 Hz sub-bass was physically inaudible on laptop speakers; the whole gate now sits above 500 Hz with the hunt band). A short two-note `openBlip` confirms the instrument is armed.
-- **Level floor = 0.45** (`0.45 + 0.4 * vertical`): grabbing the canvas center no longer clamps the output to silence.
-- **Tremolo rate = |distance|** to the carrier (log-mapped, 11 Hz cap so the wobble reads as rhythm, not pitch).
-- **Pan = direction** (drone sits left, drag left; sits right, drag right; centers as you converge).
-- At resonance the tremolo falls still and the drone sits dead-center: the guitar-tuning instinct.
+**The Problem**: AES-GCM requires 100% bit-perfect password matching. Mobile viewers dragging their thumbs on 6-inch screens literally cannot reliably stop on the pixel-perfect `40-240` integer string.
 
-The output spectrum contains only the drone and its tremolo sidebands. Capture-and-FFT reveals exactly what the ear hears — how far, which way — and never the carrier itself. There is no analytic shortcut from any single frame; closeness has to be walked.
+**The Solution**: A multi-dimensional Hacker "Micro Brute-Force".
 
-**The lock must be held**, not hit: ~3 seconds of continuous resonance under a pointer stream exhibiting human jitter (dense events, irregular intervals). Injected coordinate dumps and fixed-cadence automation hold no clock. Mobile forgiveness is inherent — a thumb near-resonance is within the ±3 Hz hysteresis window, no pixel-perfect drop required.
+Upon releasing your finger on mobile, `js/cv.js` captures your approximate coordinate drop block. Without the user knowing, the Javascript engine unleashes a nested loop that instantly runs **over 230 discrete native SubtlyCrypto AES-GCM tests** iterating over a tight +/- 5 Amplitude and +/- 10 Frequency physical radius. 
 
-**Key handling (v3: sharded vault)**: the real manifest is sealed by `batch-redact.js` with a long random passphrase (offline brute-force over the static blob is dead). The passphrase never ships whole: it is split into three tables surrounded by ~16 build-time chaff tables of identical shape. Two fragments are consumed at load into a WeakMap keyed by the canvas; the tail ships XOR-masked and is only unmasked inside the live lock handler, which additionally re-verifies the accumulated resonance credit before assembling. The key exists whole only as the inline `importKey` argument — there is no password-taking function to call: the historical `revealAll(password)` shape is **poisoned** and surrenders only the feeder artifact. At gate-open the page also spins up a runtime chaff pool (~240 random tables, plus `manifest/chaff.js` fetched same-origin and regex-scraped, never evaluated) and exposes a few seductive handles (`__VAULT_HANDLE`, `__ORBIT_RELAY`) so memory enumeration finds secrets everywhere and truth nowhere. The retired `"40-240"` carrier survives exclusively as **bait**: it opens the `ARCHIVE_STRING` feeder artifact in the markup, which decrypts to a taunt for anything that reconstructs it.
+```javascript
+for (let a = uA - rAmp; a <= uA + rAmp; a++) {
+    for (let f = uF - rFreq; f <= uF + rFreq; f++) {
+        // ... await STOCHASTIC_ENCRYPT.decrypt(attempt);
+    }
+}
+```
 
-**Stated design limit**: static hosting cannot make decryption *impossible* — any client able to execute arbitrary JS in the page can hook the decrypt call at unlock time (which requires a genuine solve first), and a patient source reader can reimplement the shard assembly offline. The gate prices out passive reconstruction (source grepping, screenshot scraping, single-frame FFT, one-shot drags, console one-liners); it does not pretend to stop a live instrumentation harness or a page rewrite.
+This guarantees 100% cryptographic Payload authenticity without demanding physically impossible pixel-perfect touch behavior.
