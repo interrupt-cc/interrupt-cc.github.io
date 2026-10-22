@@ -656,8 +656,8 @@
   // the center and are periodically averaged into ever-coarser blocks, so
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
-  const FALL_SPREAD = 0.034;  // horizontal stretch per tick — must outrun the
-                              // sky's own edge divergence, so the pull is faster
+  const FALL_SPREAD = 0.050;  // horizontal stretch per tick — pulls toward the
+                              // edges noticeably faster than the sky diverges
   const FALL_PIXEL_EVERY = 12; // ticks between block-averaging passes
   function fallStep() {
     if (!fctx || fall.height < 10) return;
