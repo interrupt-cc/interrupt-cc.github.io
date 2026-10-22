@@ -332,6 +332,11 @@
     const a = A(), p = P();
     if (!a || !p) return;
     await a.init();
+    // mobile: the context starts suspended and needs an explicit resume
+    // within the user gesture that called us — without this, no audio
+    if (a.ctx && a.ctx.state !== 'running') {
+      try { await a.ctx.resume(); } catch (e) { /* gesture may have elapsed */ }
+    }
     if (!p.sourceRouted) { a.routePlayer(p.audioElement); p.sourceRouted = true; }
     if (!p.alienRouted && p.alienAudio.src) { a.routeAlien(p.alienAudio); p.alienRouted = true; }
     p.syncDSP();
