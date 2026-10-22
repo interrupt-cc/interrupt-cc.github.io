@@ -709,21 +709,28 @@
     // they're stretched outward, so the history is pulled toward the screen
     // edges with depth. The level drives saturation/brightness, so loud
     // passages flare vivid while quiet ones recede.
-    // waterfall of the waterfall: the new row is the sky's CENTER COLUMN —
-    // the vertical slice that diverges left and right as it ages — mirrored
-    // symmetrically around the center. Bass at the middle, spectrum spreading
-    // outward left and right. Each snapshot drops as a row and stretches
-    // toward the edges with depth.
+    // waterfall of the waterfall: sample a WIDE band of the sky around the
+    // center (not the dead-center clear strip — that's what left the void),
+    // and tint each mirrored half with a different palette color so the fall
+    // carries all three hues instead of reading duotone.
     if (sky) {
       const lvl = Math.min(1, levelSm * 2.2);
       const half = Math.floor(sky.width / 2);
-      // sample a 3px-wide slice at the center for a touch more color variety
+      // sample from just off-center on each side, skipping the clear strip
+      const sliceW = Math.max(8, Math.floor(sky.width * 0.08));
+      const leftSrc = half - sliceW - 4;
+      const rightSrc = half + 4;
       fctx.save();
-      fctx.translate(w / 2, 0);
       fctx.filter = `saturate(${(1.1 + lvl * 0.7).toFixed(2)}) brightness(${(0.7 + lvl * 0.45).toFixed(2)})`;
-      fctx.drawImage(sky, half - 2, 0, 4, sky.height, -w / 2, 0, w / 2, FALL_ROW);
-      fctx.scale(-1, 1);
-      fctx.drawImage(sky, half - 2, 0, 4, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      // left half: tint with palette[0] (cyan)
+      fctx.globalCompositeOperation = 'source-over';
+      fctx.drawImage(sky, leftSrc, 0, sliceW, sky.height, 0, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[0]}30`;
+      fctx.fillRect(0, 0, w / 2, FALL_ROW);
+      // right half: tint with palette[2] (yellow) — different hue than left
+      fctx.drawImage(sky, rightSrc, 0, sliceW, sky.height, w / 2, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[2 % PALETTE.length]}30`;
+      fctx.fillRect(w / 2, 0, w / 2, FALL_ROW);
       fctx.restore();
       fctx.filter = 'none';
     }
