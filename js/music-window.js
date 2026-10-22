@@ -586,6 +586,17 @@
     return PALETTE[(i + 1) % PALETTE.length] || '#FF00FF';
   }
 
+  // the phase figure wears the INVERSE of the scene color so it never melts
+  // into the waterfall — it reads as its own artifact object in the frame
+  function invertHex(hex) {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return '#' + [255 - ((n >> 16) & 255), 255 - ((n >> 8) & 255), 255 - (n & 255)]
+      .map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  function phaseColor() {
+    return invertHex(scopeColor());
+  }
+
   function readTaps() {
     const a = A();
     if (!a || !a.masterAnalyser || !tapsReady) return false;
@@ -636,7 +647,7 @@
     const amp = h * 0.42;
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
     ctx2d.globalAlpha = 0.55;
-    ctx2d.strokeStyle = scopeColor();
+    ctx2d.strokeStyle = phaseColor();
     ctx2d.lineWidth = 1;
     ctx2d.stroke();
     ctx2d.globalAlpha = 1;
@@ -756,9 +767,9 @@
     if (!tapsReady) return;
     const cx = w / 2, cy = h / 2, amp = h * 0.46;
     tracePhaseShape(sctx, cx, cy, amp, 720);
-    sctx.strokeStyle = scopeColor();
+    sctx.strokeStyle = phaseColor();
     sctx.lineWidth = 2;
-    sctx.shadowColor = scopeColor();
+    sctx.shadowColor = phaseColor();
     sctx.shadowBlur = 8;
     sctx.stroke();
     sctx.shadowBlur = 0;
