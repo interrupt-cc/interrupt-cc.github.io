@@ -14,11 +14,25 @@
         #post-window.folded { height: var(--pw-header-h, 50px) !important; min-height: 0; }
         #post-window.folded #post-frame { display: none; }
         #fold-overlay { font-size: 0.75rem; }
+        /* One shared window for CV / AI_NOTES / SONICS.
+           SONICS mode hides the iframe+chrome and shows the music DOM,
+           whose own header becomes the window header. */
+        /* Pass-through overlay: nav links and the page stay clickable while
+           the window is open; only the window itself catches clicks. */
+        #post-overlay.active { pointer-events: none; }
+        #post-overlay.active #post-window { pointer-events: auto; }
+        #sonics-mount { display: none; position: absolute; inset: 0; }
+        #post-window.sonics #sonics-mount { display: block; }
+        #post-window.sonics > .window-header,
+        #post-window.sonics > #post-frame { display: none; }
+        #post-window:not(.sonics) #sonics-mount { visibility: hidden; }
         /* Whole-page window header: title row + nav links row, one block at
            the top of the screen, styled like a window title bar. */
         #page-header {
             position: fixed; top: 0; left: 0; right: 0;
-            z-index: 600; pointer-events: auto;
+            /* above the shared window (z 10000): the nav links must stay
+               clickable even while the window is open and overlapping */
+            z-index: 10001; pointer-events: auto;
             background: rgba(0, 10, 12, 0.92);
             border-bottom: 1px solid var(--dim-color);
             padding: 8px 16px 10px;
@@ -32,6 +46,7 @@
             color: var(--text-color); margin-left: 14px; letter-spacing: 4px;
         }
         #page-header .nav-links { margin: 0; }
+        #page-header .nav-links a { text-decoration: none; }
     </style>
 </head>
 
@@ -53,11 +68,11 @@
             <div class="window-header" id="window-handle">
                 <span class="window-title">POST</span>
                 <span style="display: flex; gap: 6px; align-items: center;">
-                    <button id="fold-overlay" class="hacker-btn">[ − ]</button>
                     <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
                 </span>
             </div>
             <iframe id="post-frame" src=""></iframe>
+            <div id="sonics-mount"></div>
         </div>
     </div>
 
@@ -137,84 +152,68 @@
         }
         requestAnimationFrame(sizeFoldedPost);
 
-        document.querySelectorAll('.post-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                const url = link.getAttribute('href');
-                if (!url || url === '#') return;
-                e.preventDefault();
-                const overlay = document.getElementById('post-overlay');
-                const frame = document.getElementById('post-frame');
+        // One shared window for all three pages. A link toggles: click the
+        // page that's already open -> close the window; click another ->
+        // swap the content inside the same window.
+        window.APP = (function () {
+            let currentPage = null;
+            function center() {
                 const win = document.getElementById('post-window');
-                const title = document.querySelector('.window-title');
-                
-                title.textContent = 'POST';
-                frame.src = url;
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-
-                // Center window
                 const winW = win.offsetWidth || 800;
                 const winH = win.offsetHeight || 600;
+                const headerH = document.getElementById('page-header').offsetHeight + 8;
                 win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
-                win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
+                win.style.top = Math.max(headerH, window.innerHeight / 2 - winH / 2) + 'px';
                 win.style.transform = 'none';
-            });
-        });
+            }
+            function toggle(id) {
+                const overlay = document.getElementById('post-overlay');
+                const win = document.getElementById('post-window');
+                const frame = document.getElementById('post-frame');
+                const titleEl = document.querySelector('#post-window .window-title');
 
-        // DEVLOG Link Handler — its own window, same mechanism as CV
-        document.getElementById('devlog-link').addEventListener('click', (e) => {
-            e.preventDefault();
-            const overlay = document.getElementById('post-overlay');
-            const frame = document.getElementById('post-frame');
-            const win = document.getElementById('post-window');
-            const title = document.querySelector('.window-title');
+                if (overlay.classList.contains('active') && currentPage === id) {
+                    return close();
+                }
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                win.classList.remove('folded');
 
-            title.textContent = 'AI_NOTES';
-            frame.src = 'posts/index.html';
-            overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
+                if (id === 'sonics') {
+                    win.classList.add('sonics');
+                    if (window.MUSIC) window.MUSIC.mount();
+                } else {
+                    win.classList.remove('sonics');
+                    titleEl.textContent = id === 'cv' ? 'CV::READ_MANIFEST' : 'AI_NOTES';
+                    if (frame.src.indexOf(id === 'cv' ? 'cv.html' : 'posts/index.html') === -1) {
+                        frame.src = id === 'cv' ? 'cv.html' : 'posts/index.html';
+                    }
+                }
+                currentPage = id;
+                center();
+            }
+            function close() {
+                document.getElementById('post-overlay').classList.remove('active');
+                document.body.style.overflow = '';
+                currentPage = null;
+            }
+            function toggleFold() {
+                const w = document.getElementById('post-window');
+                w.classList.toggle('folded');
+            }
+            return { toggle, close, toggleFold, currentPage: () => currentPage };
+        })();
 
-            const winW = win.offsetWidth || 800;
-            const winH = win.offsetHeight || 600;
-            win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
-            win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
-            win.style.transform = 'none';
-        });
+        document.getElementById('cv-link').addEventListener('click', (e) => { e.preventDefault(); window.APP.toggle('cv'); });
+        document.getElementById('devlog-link').addEventListener('click', (e) => { e.preventDefault(); window.APP.toggle('ai'); });
+        document.getElementById('music-link').addEventListener('click', (e) => { e.preventDefault(); window.APP.toggle('sonics'); });
 
-        // CV Link Handler
-        document.getElementById('cv-link').addEventListener('click', (e) => {
-            e.preventDefault();
-            const overlay = document.getElementById('post-overlay');
-            const frame = document.getElementById('post-frame');
-            const win = document.getElementById('post-window');
-            const title = document.querySelector('.window-title');
-            
-            title.textContent = 'CV::READ_MANIFEST';
-            frame.src = 'cv.html';
-            overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
+        document.getElementById('close-overlay').addEventListener('click', () => window.APP.close());
 
-            // Center window
-            const winW = win.offsetWidth || 800;
-            const winH = win.offsetHeight || 600;
-            win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
-            win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
-            win.style.transform = 'none';
-        });
-
-        document.getElementById('close-overlay').addEventListener('click', () => {
-            document.getElementById('post-overlay').classList.remove('active');
-            document.getElementById('post-frame').src = '';
-            document.body.style.overflow = '';
-        });
-
-        // Fold: collapse the window to its title bar. The frame stays loaded,
-        // so an open devlog (or its audio) is exactly where you left it.
-        document.getElementById('fold-overlay').addEventListener('click', () => {
-            const w = document.getElementById('post-window');
-            const f = document.getElementById('fold-overlay');
-            const folded = w.classList.toggle('folded');
-            f.textContent = folded ? '[ + ]' : '[ − ]';
+        // Double-clicking the window header collapses / expands the window.
+        document.getElementById('window-handle').addEventListener('dblclick', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            window.APP.toggleFold();
         });
 
         // Draggable Logic
