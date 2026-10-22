@@ -494,26 +494,23 @@
     // starts below the header, pushed down — never shrunk. the scope canvas
     // covers the same rect.
     const headerH = (document.getElementById('page-header') || {}).offsetHeight || 0;
-    const w = window.innerWidth, h = Math.round(window.innerHeight * 0.26);
+    // use clientWidth (matches 100vw CSS units exactly, no scrollbar gap)
+    // so the bitmap and the CSS size agree on every browser — using
+    // window.innerWidth here left the right half empty on Brave Android
+    const w = document.documentElement.clientWidth || window.innerWidth;
+    const h = Math.round((window.innerHeight || document.documentElement.clientHeight) * 0.26);
     if (w > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w; canvas.height = h;
       scope.width = w; scope.height = h;
       primed = false; // a resized canvas is a blank one
     }
-    // pin CSS size to the exact bitmap size: on mobile, 100vw can be wider
-    // than window.innerWidth (vw includes scrollbar), which left the right
-    // half of the sky waterfall empty because the display stretched past
-    // the bitmap data
     sky.style.top = headerH + 'px';
-    sky.style.width = w + 'px';
-    sky.style.height = h + 'px';
     scope.style.top = headerH + 'px';
-    scope.style.width = w + 'px';
-    scope.style.height = h + 'px';
 
     // the fall starts where the sky ends and runs to the bottom of the page
     const fTop = headerH + h;
-    const fh = Math.max(10, window.innerHeight - fTop);
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const fh = Math.max(10, vh - fTop);
     if (fall.width !== w || fall.height !== fh) {
       fall.width = w; fall.height = fh;
       fall.style.top = fTop + 'px';

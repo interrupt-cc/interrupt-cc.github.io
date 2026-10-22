@@ -76,7 +76,7 @@ class HorizonGrid {
     }
 
     onResize() {
-        this.width = window.innerWidth;
+        this.width = document.documentElement.clientWidth || window.innerWidth;
         this.height = window.innerHeight;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
