@@ -649,8 +649,8 @@
   // the center and are periodically averaged into ever-coarser blocks, so
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
-  const FALL_SPREAD = 0.010;  // horizontal stretch per tick (fraction of width)
-  const FALL_PIXEL_EVERY = 6; // ticks between block-averaging passes
+  const FALL_SPREAD = 0.006;  // horizontal stretch per tick (fraction of width)
+  const FALL_PIXEL_EVERY = 9; // ticks between block-averaging passes
   function fallStep() {
     if (!fctx || fall.height < 10) return;
     const w = fall.width, h = fall.height;
@@ -658,11 +658,12 @@
     // fall: everything slides down
     fctx.drawImage(fall, 0, FALL_ROW);
     // smear: a stretched copy around the center bleeds outward each tick
-    fctx.globalAlpha = 0.45;
+    // (kept faint so the bands stay crisp instead of greying out)
+    fctx.globalAlpha = 0.25;
     fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
     fctx.globalAlpha = 1;
-    // slow depth fade
-    fctx.fillStyle = 'rgba(0,0,0,0.02)';
+    // very slow depth fade
+    fctx.fillStyle = 'rgba(0,0,0,0.008)';
     fctx.fillRect(0, 0, w, h);
 
     // waterfall of the waterfall: the new row is the sky's fresh CENTER
@@ -687,8 +688,12 @@
       fsctx.clearRect(0, 0, fallScale.width, fallScale.height);
       fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
       fctx.imageSmoothingEnabled = false;
+      // re-saturate while painting back: averaging pulls colors toward grey,
+      // this pushes them back out so the blocks stay vivid
+      fctx.filter = 'saturate(1.6) contrast(1.3)';
       fctx.clearRect(0, 0, w, h);
       fctx.drawImage(fallScale, 0, 0, w, h);
+      fctx.filter = 'none';
     }
   }
 
