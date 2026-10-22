@@ -47,12 +47,6 @@
     <canvas id="horizon-grid"></canvas>
     <canvas id="crt-media"></canvas>
     <canvas id="crt-static"></canvas>
-    <div class="gutter">
-        <header>
-        </header>
-
-
-    </div>
 
     <div id="post-overlay">
         <div class="window" id="post-window">
@@ -126,6 +120,15 @@
                 window.CRT_CONFIG = { ...window.CRT_CONFIG, ...event.data.config };
             }
         });
+
+        // The page header owns the very top: push the wave-grid canvas below
+        // it (never shrunk), same as the sky visualizer.
+        function dropBelowHeader() {
+            const hh = document.getElementById('page-header').offsetHeight;
+            document.getElementById('horizon-grid').style.top = hh + 'px';
+        }
+        dropBelowHeader();
+        window.addEventListener('resize', dropBelowHeader);
 
         document.querySelectorAll('.post-link').forEach(link => {
             link.addEventListener('click', (e) => {
