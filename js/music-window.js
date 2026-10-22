@@ -270,7 +270,10 @@
     document.body.appendChild(scope);
     fall = document.createElement('canvas');
     fall.id = 'mw-fall';
-    document.body.appendChild(fall);
+    // below the media images (same z, earlier in DOM) so they composite
+    // between the fall and the wave grid
+    const media = document.getElementById('crt-media');
+    media.parentNode.insertBefore(fall, media);
     fctx = fall.getContext('2d');
     fallScale = document.createElement('canvas');
     fsctx = fallScale.getContext('2d');
@@ -662,20 +665,17 @@
     fctx.fillStyle = 'rgba(0,0,0,0.02)';
     fctx.fillRect(0, 0, w, h);
 
-    // fresh row at the top, same log-frequency mapping as the sky (low left)
-    if (lut) {
-      const grad = fctx.createLinearGradient(0, 0, w, 0);
-      const a = A();
-      if (a && a.masterAnalyser) a.masterAnalyser.getByteFrequencyData(freqBuf);
-      const nyq = a && a.ctx ? a.ctx.sampleRate / 2 : 44100 / 2;
-      for (let r = 0; r <= BINS; r++) {
-        const f = FMIN * Math.pow(FMAX / FMIN, r / BINS);
-        const b = Math.min(freqBuf.length - 1, Math.floor(f / nyq * freqBuf.length));
-        const t = Math.pow(freqBuf[b] / 255, 0.7);
-        grad.addColorStop(r / BINS, lut[Math.min(63, Math.floor(t * 63))]);
-      }
-      fctx.fillStyle = grad;
-      fctx.fillRect(0, 0, w, FALL_ROW);
+    // waterfall of the waterfall: the new row is the sky's fresh CENTER
+    // COLUMN squashed and mirrored outward — bass at the center, spectrum
+    // spreading symmetrically left and right, exactly like the sky emanates
+    if (lut && sky) {
+      const half = Math.floor(sky.width / 2);
+      fctx.save();
+      fctx.translate(w / 2, 0);
+      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.scale(-1, 1);
+      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.restore();
     }
 
     // pixelate: average the whole canvas down, paint back nearest-neighbor.
