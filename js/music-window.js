@@ -81,7 +81,6 @@
           rgba(0, 0, 0, 0.55) 75%,
           rgba(0, 0, 0, 0.15) 100%);
       }
-      #mw-fold { cursor: pointer; font-size: 0.75rem; }
       /* The waterfall IS the sky: full-width backdrop behind the wave grid,
          from the top of the page to just below the horizon (grid line = 20vh).
          The phase scope overlays the same rect. */
@@ -237,7 +236,6 @@
         <div class="window-header" id="mw-handle">
           <span class="window-title">SONICS</span>
           <span style="display: flex; gap: 6px; align-items: center;">
-            <button id="mw-fold" class="hacker-btn">[ − ]</button>
             <button id="mw-close" class="hacker-btn">[ CLOSE ]</button>
           </span>
         </div>
@@ -279,9 +277,6 @@
 
     overlay.querySelector('#mw-close').addEventListener('click', () => {
       if (window.APP) window.APP.close(); else closeWindow();
-    });
-    overlay.querySelector('#mw-fold').addEventListener('click', () => {
-      if (window.APP) window.APP.toggleFold();
     });
     // double-click the header collapses / expands the shared window
     overlay.querySelector('#mw-handle').addEventListener('dblclick', (e) => {

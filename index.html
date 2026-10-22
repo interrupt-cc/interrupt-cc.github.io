@@ -46,6 +46,7 @@
             color: var(--text-color); margin-left: 14px; letter-spacing: 4px;
         }
         #page-header .nav-links { margin: 0; }
+        #page-header .nav-links a { text-decoration: none; }
     </style>
 </head>
 
@@ -67,7 +68,6 @@
             <div class="window-header" id="window-handle">
                 <span class="window-title">POST</span>
                 <span style="display: flex; gap: 6px; align-items: center;">
-                    <button id="fold-overlay" class="hacker-btn">[ − ]</button>
                     <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
                 </span>
             </div>
@@ -178,7 +178,6 @@
                 overlay.classList.add('active');
                 document.body.style.overflow = 'hidden';
                 win.classList.remove('folded');
-                document.getElementById('fold-overlay').textContent = '[ − ]';
 
                 if (id === 'sonics') {
                     win.classList.add('sonics');
@@ -200,9 +199,7 @@
             }
             function toggleFold() {
                 const w = document.getElementById('post-window');
-                const f = document.getElementById('fold-overlay');
-                const folded = w.classList.toggle('folded');
-                f.textContent = folded ? '[ + ]' : '[ − ]';
+                w.classList.toggle('folded');
             }
             return { toggle, close, toggleFold, currentPage: () => currentPage };
         })();
@@ -212,10 +209,6 @@
         document.getElementById('music-link').addEventListener('click', (e) => { e.preventDefault(); window.APP.toggle('sonics'); });
 
         document.getElementById('close-overlay').addEventListener('click', () => window.APP.close());
-
-        // Fold: collapse the window to its title bar. The frame stays loaded,
-        // so an open devlog (or its audio) is exactly where you left it.
-        document.getElementById('fold-overlay').addEventListener('click', () => window.APP.toggleFold());
 
         // Double-clicking the window header collapses / expands the window.
         document.getElementById('window-handle').addEventListener('dblclick', (e) => {
