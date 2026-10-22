@@ -684,10 +684,15 @@
 
     // fall: everything slides down
     fctx.drawImage(fall, 0, FALL_ROW);
-    // smear: a stretched copy around the center bleeds outward each tick
-    // (kept faint so the bands stay crisp instead of greying out)
+    // smear: a stretched copy around the center bleeds outward each tick.
+    // depth-dependent: the upper band stretches mildly, the lower band
+    // stretches hard — so content is pulled more and more as it falls.
     fctx.globalAlpha = 0.25;
-    fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
+    const splitY = Math.floor(h * 0.35);
+    fctx.drawImage(fall, 0, 0, w, splitY,
+                        -w * FALL_SPREAD * 0.4, FALL_ROW, w * (1 + FALL_SPREAD * 0.8), splitY);
+    fctx.drawImage(fall, 0, splitY, w, h - splitY,
+                        -w * FALL_SPREAD, FALL_ROW + splitY, w * (1 + FALL_SPREAD * 2), h - splitY);
     fctx.globalAlpha = 1;
     // depth fade: gentle at the top, stronger toward the bottom, so the
     // fall fades out as it approaches the page bottom instead of filling it
@@ -704,16 +709,29 @@
     // they're stretched outward, so the history is pulled toward the screen
     // edges with depth. The level drives saturation/brightness, so loud
     // passages flare vivid while quiet ones recede.
-    if (lut && sky) {
+    // waterfall of the waterfall: sample a WIDE band of the sky around the
+    // center (not the dead-center clear strip — that's what left the void),
+    // and tint each mirrored half with a different palette color so the fall
+    // carries all three hues instead of reading duotone.
+    if (sky) {
       const lvl = Math.min(1, levelSm * 2.2);
-      // grab a band around the middle line, not a single hairline row —
-      // more frequency bands per snapshot, so the fall carries more colors
-      const bandH = Math.max(4, Math.floor(sky.height * 0.34));
-      const bandY = Math.max(0, Math.floor((sky.height - bandH) / 2));
-      // never desaturate: quiet passages stay colorful, the level just
-      // changes how hot/bright they burn — high dynamic range keeps hue
-      fctx.filter = `saturate(${(1.4 + lvl * 0.9).toFixed(2)}) brightness(${(0.9 + lvl * 0.55).toFixed(2)}) contrast(1.15)`;
-      fctx.drawImage(sky, 0, bandY, sky.width, bandH, 0, 0, w, FALL_ROW);
+      const half = Math.floor(sky.width / 2);
+      // sample from just off-center on each side, skipping the clear strip
+      const sliceW = Math.max(8, Math.floor(sky.width * 0.08));
+      const leftSrc = half - sliceW - 4;
+      const rightSrc = half + 4;
+      fctx.save();
+      fctx.filter = `saturate(${(1.1 + lvl * 0.7).toFixed(2)}) brightness(${(0.7 + lvl * 0.45).toFixed(2)})`;
+      // left half: tint with palette[0] (cyan)
+      fctx.globalCompositeOperation = 'source-over';
+      fctx.drawImage(sky, leftSrc, 0, sliceW, sky.height, 0, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[0]}30`;
+      fctx.fillRect(0, 0, w / 2, FALL_ROW);
+      // right half: tint with palette[2] (yellow) — different hue than left
+      fctx.drawImage(sky, rightSrc, 0, sliceW, sky.height, w / 2, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[2 % PALETTE.length]}30`;
+      fctx.fillRect(w / 2, 0, w / 2, FALL_ROW);
+      fctx.restore();
       fctx.filter = 'none';
     }
 
@@ -733,7 +751,7 @@
       // grey and mud, this pushes saturation AND contrast so the averaged
       // blocks stay punchy — scaled by the level, so volume keeps them alive
       const lvl = Math.min(1, levelSm * 2.2);
-      fctx.filter = `saturate(${(1.45 + lvl * 0.7).toFixed(2)}) contrast(${(1.55 + lvl * 0.5).toFixed(2)})`;
+      fctx.filter = `saturate(${(1.2 + lvl * 0.5).toFixed(2)}) contrast(${(1.35 + lvl * 0.4).toFixed(2)}) brightness(${(0.7 + lvl * 0.4).toFixed(2)})`;
       fctx.drawImage(fallScale, 0, 0, fallScale.width, bandSH, 0, 0, w, bandH);
       fctx.filter = 'none';
     }
