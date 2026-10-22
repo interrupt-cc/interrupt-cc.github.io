@@ -656,7 +656,8 @@
   // the center and are periodically averaged into ever-coarser blocks, so
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
-  const FALL_SPREAD = 0.016;  // horizontal stretch per tick — the outward pull
+  const FALL_SPREAD = 0.034;  // horizontal stretch per tick — must outrun the
+                              // sky's own edge divergence, so the pull is faster
   const FALL_PIXEL_EVERY = 12; // ticks between block-averaging passes
   function fallStep() {
     if (!fctx || fall.height < 10) return;
@@ -669,8 +670,13 @@
     fctx.globalAlpha = 0.25;
     fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
     fctx.globalAlpha = 1;
-    // slow depth fade — trails linger, the history lives long
-    fctx.fillStyle = 'rgba(0,0,0,0.004)';
+    // depth fade: gentle at the top, stronger toward the bottom, so the
+    // fall fades out as it approaches the page bottom instead of filling it
+    const fade = fctx.createLinearGradient(0, 0, 0, h);
+    fade.addColorStop(0, 'rgba(0,0,0,0.004)');
+    fade.addColorStop(0.55, 'rgba(0,0,0,0.010)');
+    fade.addColorStop(1, 'rgba(0,0,0,0.030)');
+    fctx.fillStyle = fade;
     fctx.fillRect(0, 0, w, h);
 
     // waterfall of the waterfall: the new row is the sky's MIDDLE HORIZONTAL
@@ -681,9 +687,12 @@
     // passages flare vivid while quiet ones recede.
     if (lut && sky) {
       const lvl = Math.min(1, levelSm * 2.2);
-      const midY = Math.max(0, Math.floor(sky.height / 2) - 1);
+      // grab a band around the middle line, not a single hairline row —
+      // more frequency bands per snapshot, so the fall carries more colors
+      const bandH = Math.max(4, Math.floor(sky.height * 0.34));
+      const bandY = Math.max(0, Math.floor((sky.height - bandH) / 2));
       fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
-      fctx.drawImage(sky, 0, midY, sky.width, 2, 0, 0, w, FALL_ROW);
+      fctx.drawImage(sky, 0, bandY, sky.width, bandH, 0, 0, w, FALL_ROW);
       fctx.filter = 'none';
     }
 
