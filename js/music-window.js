@@ -642,7 +642,10 @@
     // its trail diverges symmetrically with the spectrum it belongs to.
     const amp = h * 0.42;
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
-    ctx2d.globalAlpha = 0.55;
+    // light touch: at high alpha the figure's inverse color (green while the
+    // palette is magenta) floods the sky's center band — and the fall samples
+    // that band, turning the whole fall green. Low alpha keeps it a line.
+    ctx2d.globalAlpha = 0.22;
     ctx2d.strokeStyle = phaseColor();
     ctx2d.lineWidth = 1;                       // the trail stays a crisp drawing
     ctx2d.stroke();
