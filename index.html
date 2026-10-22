@@ -11,7 +11,7 @@
         /* Folded post/devlog window: collapse to the title bar only.
            The frame (and whatever it was playing) stays loaded underneath. */
         #post-window { transition: height 0.4s ease; overflow: hidden; }
-        #post-window.folded { height: 36px !important; min-height: 0; }
+        #post-window.folded { height: var(--pw-header-h, 50px) !important; min-height: 0; }
         #post-window.folded #post-frame { display: none; }
         #fold-overlay { font-size: 0.75rem; }
         /* Whole-page window header: title row + nav links row, one block at
@@ -129,6 +129,13 @@
         }
         dropBelowHeader();
         window.addEventListener('resize', dropBelowHeader);
+
+        // folded post window collapses to its real title-bar height
+        function sizeFoldedPost() {
+            const h = Math.ceil(document.getElementById('window-handle').offsetHeight) + 1;
+            document.getElementById('post-window').style.setProperty('--pw-header-h', h + 'px');
+        }
+        requestAnimationFrame(sizeFoldedPost);
 
         document.querySelectorAll('.post-link').forEach(link => {
             link.addEventListener('click', (e) => {

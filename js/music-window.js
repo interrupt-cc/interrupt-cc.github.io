@@ -63,6 +63,15 @@
       /* Pass-through overlay: the page behind (nav, feed, signal readout)
          stays fully interactive while the library floats above it. */
       #music-window { pointer-events: auto; }
+      /* window body fades from solid black at the title bar to translucent
+         at the bottom so the sky/grid show through underneath the list */
+      #music-window {
+        background: linear-gradient(to bottom,
+          rgba(0, 0, 0, 0.97) 0%,
+          rgba(0, 0, 0, 0.88) 45%,
+          rgba(0, 0, 0, 0.55) 75%,
+          rgba(0, 0, 0, 0.15) 100%);
+      }
       /* No !important on top/left/transform — the drag handler positions
          the window via inline styles, exactly like the post window. */
       #music-window {
@@ -71,8 +80,9 @@
         left: 3vw; transform: none;
         transition: height 0.4s ease;
       }
-      /* Folded: collapse to the title bar, menu-style. Playback continues. */
-      #music-window.folded { height: 36px !important; min-height: 0; }
+      /* Folded: collapse to the title bar, menu-style. Playback continues.
+         height:auto collapses exactly to the header — nothing gets clipped. */
+      #music-window.folded { height: auto !important; min-height: 0; }
       #music-window.folded #mw-vis,
       #music-window.folded #mw-toolbar,
       #music-window.folded #mw-list { display: none; }
