@@ -691,7 +691,9 @@
       // more frequency bands per snapshot, so the fall carries more colors
       const bandH = Math.max(4, Math.floor(sky.height * 0.34));
       const bandY = Math.max(0, Math.floor((sky.height - bandH) / 2));
-      fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
+      // never desaturate: quiet passages stay colorful, the level just
+      // changes how hot/bright they burn — high dynamic range keeps hue
+      fctx.filter = `saturate(${(1.4 + lvl * 0.9).toFixed(2)}) brightness(${(0.9 + lvl * 0.55).toFixed(2)}) contrast(1.15)`;
       fctx.drawImage(sky, 0, bandY, sky.width, bandH, 0, 0, w, FALL_ROW);
       fctx.filter = 'none';
     }
@@ -712,7 +714,7 @@
       // grey and mud, this pushes saturation AND contrast so the averaged
       // blocks stay punchy — scaled by the level, so volume keeps them alive
       const lvl = Math.min(1, levelSm * 2.2);
-      fctx.filter = `saturate(${(1.2 + lvl * 0.8).toFixed(2)}) contrast(${(1.6 + lvl * 0.5).toFixed(2)})`;
+      fctx.filter = `saturate(${(1.45 + lvl * 0.7).toFixed(2)}) contrast(${(1.55 + lvl * 0.5).toFixed(2)})`;
       fctx.drawImage(fallScale, 0, 0, fallScale.width, bandSH, 0, 0, w, bandH);
       fctx.filter = 'none';
     }
