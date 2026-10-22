@@ -684,10 +684,15 @@
 
     // fall: everything slides down
     fctx.drawImage(fall, 0, FALL_ROW);
-    // smear: a stretched copy around the center bleeds outward each tick
-    // (kept faint so the bands stay crisp instead of greying out)
+    // smear: a stretched copy around the center bleeds outward each tick.
+    // depth-dependent: the upper band stretches mildly, the lower band
+    // stretches hard — so content is pulled more and more as it falls.
     fctx.globalAlpha = 0.25;
-    fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
+    const splitY = Math.floor(h * 0.35);
+    fctx.drawImage(fall, 0, 0, w, splitY,
+                        -w * FALL_SPREAD * 0.4, FALL_ROW, w * (1 + FALL_SPREAD * 0.8), splitY);
+    fctx.drawImage(fall, 0, splitY, w, h - splitY,
+                        -w * FALL_SPREAD, FALL_ROW + splitY, w * (1 + FALL_SPREAD * 2), h - splitY);
     fctx.globalAlpha = 1;
     // depth fade: gentle at the top, stronger toward the bottom, so the
     // fall fades out as it approaches the page bottom instead of filling it
@@ -704,36 +709,23 @@
     // they're stretched outward, so the history is pulled toward the screen
     // edges with depth. The level drives saturation/brightness, so loud
     // passages flare vivid while quiet ones recede.
-    // paint the fall's new row directly from the FFT with a multi-hue gradient
-    // across the full CMY palette (cyan lows, magenta mids, yellow highs) —
-    // every row carries all three colors, so the fall is genuinely colorful
-    // instead of inheriting the sky's single per-column hue.
-    if (lut) {
-      const a = A();
-      if (a && a.masterAnalyser) a.masterAnalyser.getByteFrequencyData(freqBuf);
-      const nyq = a && a.ctx ? a.ctx.sampleRate / 2 : 44100 / 2;
+    // waterfall of the waterfall: the new row is the sky's CENTER COLUMN —
+    // the vertical slice that diverges left and right as it ages — mirrored
+    // symmetrically around the center. Bass at the middle, spectrum spreading
+    // outward left and right. Each snapshot drops as a row and stretches
+    // toward the edges with depth.
+    if (sky) {
       const lvl = Math.min(1, levelSm * 2.2);
-      // 3-stop gradient: each palette color owns a frequency band
-      const grad = fctx.createLinearGradient(0, 0, w, 0);
-      const fb = (f) => Math.min(freqBuf.length - 1, Math.floor(f / nyq * freqBuf.length));
-      const stops = [
-        { f: FMIN, c: PALETTE[0] },
-        { f: FMIN * Math.pow(FMAX / FMIN, 0.5), c: PALETTE[1 % PALETTE.length] },
-        { f: FMAX, c: PALETTE[2 % PALETTE.length] },
-      ];
-      for (let si = 0; si <= 8; si++) {
-        const t = si / 8;
-        const stopIdx = Math.min(stops.length - 1, Math.floor(t * (stops.length - 1)));
-        const localT = (t * (stops.length - 1)) - stopIdx;
-        const s0 = stops[Math.max(0, stopIdx)], s1 = stops[Math.min(stops.length - 1, stopIdx + 1)];
-        const f = s0.f * Math.pow(s1.f / s0.f, localT);
-        const b = fb(f);
-        const v = Math.pow(freqBuf[b] / 255, 0.7);
-        const alpha = (0.25 + lvl * 0.6) * v;
-        grad.addColorStop(t, `${s0.c}${Math.floor(alpha * 255).toString(16).padStart(2,'0')}`);
-      }
-      fctx.fillStyle = grad;
-      fctx.fillRect(0, 0, w, FALL_ROW);
+      const half = Math.floor(sky.width / 2);
+      // sample a 3px-wide slice at the center for a touch more color variety
+      fctx.save();
+      fctx.translate(w / 2, 0);
+      fctx.filter = `saturate(${(1.1 + lvl * 0.7).toFixed(2)}) brightness(${(0.7 + lvl * 0.45).toFixed(2)})`;
+      fctx.drawImage(sky, half - 2, 0, 4, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.scale(-1, 1);
+      fctx.drawImage(sky, half - 2, 0, 4, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.restore();
+      fctx.filter = 'none';
     }
 
     // pixelate: average the canvas down, paint back nearest-neighbor — but
