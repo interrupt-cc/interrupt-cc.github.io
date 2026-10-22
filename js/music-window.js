@@ -668,15 +668,20 @@
 
     // waterfall of the waterfall: the new row is the sky's fresh CENTER
     // COLUMN squashed and mirrored outward — bass at the center, spectrum
-    // spreading symmetrically left and right, exactly like the sky emanates
+    // spreading symmetrically left and right, exactly like the sky emanates.
+    // the level drives saturation/brightness, so loud passages flare vivid
+    // while quiet ones recede instead of flattening into dead color
     if (lut && sky) {
+      const lvl = Math.min(1, levelSm * 2.2);
       const half = Math.floor(sky.width / 2);
       fctx.save();
       fctx.translate(w / 2, 0);
+      fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
       fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
       fctx.scale(-1, 1);
       fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
       fctx.restore();
+      fctx.filter = 'none';
     }
 
     // pixelate: average the whole canvas down, paint back nearest-neighbor.
@@ -689,8 +694,10 @@
       fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
       fctx.imageSmoothingEnabled = false;
       // re-saturate while painting back: averaging pulls colors toward grey,
-      // this pushes them back out so the blocks stay vivid
-      fctx.filter = 'saturate(1.6) contrast(1.3)';
+      // this pushes them back out so the blocks stay vivid — and the current
+      // level decides how hard, so volume keeps the colors alive
+      const lvl = Math.min(1, levelSm * 2.2);
+      fctx.filter = `saturate(${(1.3 + lvl * 0.9).toFixed(2)}) contrast(${(1.2 + lvl * 0.4).toFixed(2)})`;
       fctx.clearRect(0, 0, w, h);
       fctx.drawImage(fallScale, 0, 0, w, h);
       fctx.filter = 'none';
