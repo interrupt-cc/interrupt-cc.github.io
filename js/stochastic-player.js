@@ -149,7 +149,7 @@ class StochasticPlayer {
             background: rgba(0,0,0,0.85); border: 1px solid var(--dim-color);
             padding: 10px 15px; font-family: monospace; font-size: 0.8rem;
             color: var(--text-color); box-shadow: var(--glow-shadow);
-            z-index: 10000; cursor: pointer; text-align: right;
+            z-index: 10050; cursor: pointer; text-align: right;
         `;
         
         playerUI.innerHTML = `

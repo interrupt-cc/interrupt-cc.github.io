@@ -642,7 +642,10 @@
     // its trail diverges symmetrically with the spectrum it belongs to.
     const amp = h * 0.42;
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
-    ctx2d.globalAlpha = 0.55;
+    // light touch: at high alpha the figure's inverse color (green while the
+    // palette is magenta) floods the sky's center band — and the fall samples
+    // that band, turning the whole fall green. Low alpha keeps it a line.
+    ctx2d.globalAlpha = 0.22;
     ctx2d.strokeStyle = phaseColor();
     ctx2d.lineWidth = 1;                       // the trail stays a crisp drawing
     ctx2d.stroke();
@@ -656,57 +659,100 @@
   // the center and are periodically averaged into ever-coarser blocks, so
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
-  const FALL_SPREAD = 0.006;  // horizontal stretch per tick (fraction of width)
-  const FALL_PIXEL_EVERY = 9; // ticks between block-averaging passes
+  const FALL_SPREAD = 0.050;  // horizontal stretch per tick — pulls toward the
+                              // edges noticeably faster than the sky diverges
+  const FALL_PIXEL_EVERY = 12; // ticks between block-averaging passes
+  // natural-rate sampling: instead of dropping a row on every audio tick,
+  // gate each drop on the running level so it sometimes advances, sometimes
+  // holds — the fall develops a natural irregular pattern rather than a
+  // uniform stripe. Uses a slow random + level-modulated threshold.
+  let fallAccum = 0;
+  let fallDriftSeed = 0.31;
+  function fallShouldDrop() {
+    fallDriftSeed += 0.04;
+    const lvl = Math.min(1, levelSm * 2.2);
+    const n = 0.5 + 0.4 * Math.sin(fallDriftSeed * 1.7) + 0.2 * Math.sin(fallDriftSeed * 0.43);
+    fallAccum += 0.35 + lvl * 0.9;
+    if (fallAccum >= n) { fallAccum = 0; return true; }
+    return false;
+  }
+
   function fallStep() {
     if (!fctx || fall.height < 10) return;
     const w = fall.width, h = fall.height;
+    if (!fallShouldDrop()) return;
 
     // fall: everything slides down
     fctx.drawImage(fall, 0, FALL_ROW);
-    // smear: a stretched copy around the center bleeds outward each tick
-    // (kept faint so the bands stay crisp instead of greying out)
+    // smear: a stretched copy around the center bleeds outward each tick.
+    // depth-dependent: the upper band stretches mildly, the lower band
+    // stretches hard — so content is pulled more and more as it falls.
     fctx.globalAlpha = 0.25;
-    fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
+    const splitY = Math.floor(h * 0.35);
+    fctx.drawImage(fall, 0, 0, w, splitY,
+                        -w * FALL_SPREAD * 0.4, FALL_ROW, w * (1 + FALL_SPREAD * 0.8), splitY);
+    fctx.drawImage(fall, 0, splitY, w, h - splitY,
+                        -w * FALL_SPREAD, FALL_ROW + splitY, w * (1 + FALL_SPREAD * 2), h - splitY);
     fctx.globalAlpha = 1;
-    // very slow depth fade
-    fctx.fillStyle = 'rgba(0,0,0,0.008)';
+    // depth fade: gentle at the top, stronger toward the bottom, so the
+    // fall fades out as it approaches the page bottom instead of filling it
+    const fade = fctx.createLinearGradient(0, 0, 0, h);
+    fade.addColorStop(0, 'rgba(0,0,0,0.004)');
+    fade.addColorStop(0.55, 'rgba(0,0,0,0.010)');
+    fade.addColorStop(1, 'rgba(0,0,0,0.030)');
+    fctx.fillStyle = fade;
     fctx.fillRect(0, 0, w, h);
 
-    // waterfall of the waterfall: the new row is the sky's fresh CENTER
-    // COLUMN squashed and mirrored outward — bass at the center, spectrum
-    // spreading symmetrically left and right, exactly like the sky emanates.
-    // the level drives saturation/brightness, so loud passages flare vivid
-    // while quiet ones recede instead of flattening into dead color
-    if (lut && sky) {
+    // waterfall of the waterfall: the new row is the sky's MIDDLE HORIZONTAL
+    // LINE — the time-history of the mid band, newest at the sky's center,
+    // past diverging to the edges. Each snapshot drops a row; as rows fall
+    // they're stretched outward, so the history is pulled toward the screen
+    // edges with depth. The level drives saturation/brightness, so loud
+    // passages flare vivid while quiet ones recede.
+    // waterfall of the waterfall: sample a WIDE band of the sky around the
+    // center (not the dead-center clear strip — that's what left the void),
+    // and tint each mirrored half with a different palette color so the fall
+    // carries all three hues instead of reading duotone.
+    if (sky) {
       const lvl = Math.min(1, levelSm * 2.2);
       const half = Math.floor(sky.width / 2);
+      // sample from just off-center on each side, skipping the clear strip
+      const sliceW = Math.max(8, Math.floor(sky.width * 0.08));
+      const leftSrc = half - sliceW - 4;
+      const rightSrc = half + 4;
       fctx.save();
-      fctx.translate(w / 2, 0);
-      fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
-      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
-      fctx.scale(-1, 1);
-      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.filter = `saturate(${(1.1 + lvl * 0.7).toFixed(2)}) brightness(${(0.7 + lvl * 0.45).toFixed(2)})`;
+      // left half: tint with palette[0] (cyan)
+      fctx.globalCompositeOperation = 'source-over';
+      fctx.drawImage(sky, leftSrc, 0, sliceW, sky.height, 0, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[0]}30`;
+      fctx.fillRect(0, 0, w / 2, FALL_ROW);
+      // right half: tint with palette[2] (yellow) — different hue than left
+      fctx.drawImage(sky, rightSrc, 0, sliceW, sky.height, w / 2, 0, w / 2, FALL_ROW);
+      fctx.fillStyle = `${PALETTE[2 % PALETTE.length]}30`;
+      fctx.fillRect(w / 2, 0, w / 2, FALL_ROW);
       fctx.restore();
       fctx.filter = 'none';
     }
 
-    // pixelate: average the whole canvas down, paint back nearest-neighbor.
-    // every pass is cumulative, so the oldest (deepest) pixels are the
-    // blockiest — averaged into big squares as they fall.
+    // pixelate: average the canvas down, paint back nearest-neighbor — but
+    // only the upper band. Deep content stops being re-averaged, so the
+    // blockiness is cut back toward the bottom instead of compounding all
+    // the way down.
     fallTicks++;
     if (fallTicks % FALL_PIXEL_EVERY === 0) {
+      const bandH = Math.floor(h * 0.62);
+      const bandSH = Math.max(1, Math.floor(fallScale.height * 0.62));
       fsctx.imageSmoothingEnabled = true;
-      fsctx.clearRect(0, 0, fallScale.width, fallScale.height);
-      fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
+      fsctx.clearRect(0, 0, fallScale.width, bandSH);
+      fsctx.drawImage(fall, 0, 0, w, bandH, 0, 0, fallScale.width, bandSH);
       fctx.imageSmoothingEnabled = false;
-      // re-saturate while painting back: averaging pulls colors toward grey,
-      // this pushes them back out so the blocks stay vivid — and the current
-      // level decides how hard, so volume keeps the colors alive
+      // contrast-biased while painting back: averaging pulls colors toward
+      // grey and mud, this pushes saturation AND contrast so the averaged
+      // blocks stay punchy — scaled by the level, so volume keeps them alive
       const lvl = Math.min(1, levelSm * 2.2);
-      fctx.filter = `saturate(${(1.3 + lvl * 0.9).toFixed(2)}) contrast(${(1.2 + lvl * 0.4).toFixed(2)})`;
-      fctx.clearRect(0, 0, w, h);
-      fctx.drawImage(fallScale, 0, 0, w, h);
+      fctx.filter = `saturate(${(1.2 + lvl * 0.5).toFixed(2)}) contrast(${(1.35 + lvl * 0.4).toFixed(2)}) brightness(${(0.7 + lvl * 0.4).toFixed(2)})`;
+      fctx.drawImage(fallScale, 0, 0, fallScale.width, bandSH, 0, 0, w, bandH);
       fctx.filter = 'none';
     }
   }
