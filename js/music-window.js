@@ -662,9 +662,25 @@
   const FALL_SPREAD = 0.050;  // horizontal stretch per tick — pulls toward the
                               // edges noticeably faster than the sky diverges
   const FALL_PIXEL_EVERY = 12; // ticks between block-averaging passes
+  // natural-rate sampling: instead of dropping a row on every audio tick,
+  // gate each drop on the running level so it sometimes advances, sometimes
+  // holds — the fall develops a natural irregular pattern rather than a
+  // uniform stripe. Uses a slow random + level-modulated threshold.
+  let fallAccum = 0;
+  let fallDriftSeed = 0.31;
+  function fallShouldDrop() {
+    fallDriftSeed += 0.04;
+    const lvl = Math.min(1, levelSm * 2.2);
+    const n = 0.5 + 0.4 * Math.sin(fallDriftSeed * 1.7) + 0.2 * Math.sin(fallDriftSeed * 0.43);
+    fallAccum += 0.35 + lvl * 0.9;
+    if (fallAccum >= n) { fallAccum = 0; return true; }
+    return false;
+  }
+
   function fallStep() {
     if (!fctx || fall.height < 10) return;
     const w = fall.width, h = fall.height;
+    if (!fallShouldDrop()) return;
 
     // fall: everything slides down
     fctx.drawImage(fall, 0, FALL_ROW);
