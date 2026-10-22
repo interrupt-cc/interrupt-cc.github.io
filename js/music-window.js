@@ -648,11 +648,8 @@
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
     ctx2d.globalAlpha = 0.55;
     ctx2d.strokeStyle = phaseColor();
-    ctx2d.lineWidth = 1 + 3 * styleMorph;      // drawing -> coloring
-    ctx2d.shadowColor = phaseColor();
-    ctx2d.shadowBlur = 7 * styleMorph;
+    ctx2d.lineWidth = 1;                       // the trail stays a crisp drawing
     ctx2d.stroke();
-    ctx2d.shadowBlur = 0;
     ctx2d.globalAlpha = 1;
 
     fallStep();
@@ -774,10 +771,11 @@
     const cx = w / 2, cy = h / 2, amp = h * 0.46;
     tracePhaseShape(sctx, cx, cy, amp, 720);
     sctx.strokeStyle = phaseColor();
-    sctx.lineWidth = 1.4 + 4 * styleMorph;     // drawing -> coloring
+    const m = styleMorph * styleMorph;         // biased: mostly drawing, rare swells
+    sctx.lineWidth = 1.2 + 3.2 * m;            // drawing -> coloring
     sctx.shadowColor = phaseColor();
-    sctx.shadowBlur = 12 * styleMorph;
-    if (styleMorph > 0.5) sctx.globalCompositeOperation = 'lighter'; // coloring glows additively
+    sctx.shadowBlur = 10 * m;
+    if (m > 0.5) sctx.globalCompositeOperation = 'lighter'; // coloring glows additively
     sctx.stroke();
     sctx.globalCompositeOperation = 'source-over';
     sctx.shadowBlur = 0;
