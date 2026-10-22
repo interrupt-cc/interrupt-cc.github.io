@@ -59,42 +59,28 @@
     const style = document.createElement('style');
     style.id = 'mw-styles';
     style.innerText = `
+      /* SONICS lives inside the shared glitch window (post-window). The
+         overlay is a passthrough container filling the mount; the window
+         body keeps its fade from solid black to translucent. */
       #music-overlay {
-        position: fixed; inset: 0; background: transparent;
-        z-index: 9500; opacity: 0; pointer-events: none;
-        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: absolute; inset: 0; background: transparent;
+        pointer-events: none;
       }
-      #music-overlay.active { opacity: 1; }
-      /* Pass-through overlay: the page behind (nav, feed, signal readout)
-         stays fully interactive while the library floats above it.
-         Closed (not .active) the window is fully inert — invisible AND
-         unclickable, so page clicks can never hit hidden track rows. */
-      #music-window { visibility: visible; transition: visibility 0.4s; }
-      #music-overlay:not(.active) #music-window { visibility: hidden; }
-      #music-overlay.active #music-window { pointer-events: auto; visibility: visible; }
-      /* window body fades from solid black at the title bar to translucent
-         at the bottom so the sky/grid show through underneath the list */
+      /* inert whenever the shared window is closed: the overlay passes
+         clicks through, and the window must not catch them while invisible */
+      #music-window { pointer-events: none; }
+      #post-overlay.active #music-window { pointer-events: auto; }
       #music-window {
+        position: absolute; inset: 0;
+        width: 100%; max-width: none; height: 100%;
+        top: 0; left: 0; transform: none;
+        transition: height 0.4s ease;
         background: linear-gradient(to bottom,
           rgba(0, 0, 0, 0.97) 0%,
           rgba(0, 0, 0, 0.88) 45%,
           rgba(0, 0, 0, 0.55) 75%,
           rgba(0, 0, 0, 0.15) 100%);
       }
-      /* No !important on top/left/transform — the drag handler positions
-         the window via inline styles, exactly like the post window. */
-      #music-window {
-        width: 94vw; max-width: 1100px;
-        top: 150px; height: calc(100vh - 170px);
-        left: 3vw; transform: none;
-        transition: height 0.4s ease;
-      }
-      /* Folded: collapse to the title bar, menu-style. Playback continues.
-         height:auto collapses exactly to the header — nothing gets clipped. */
-      #music-window.folded { height: auto !important; min-height: 0; }
-      #music-window.folded #mw-vis,
-      #music-window.folded #mw-toolbar,
-      #music-window.folded #mw-list { display: none; }
       #mw-fold { cursor: pointer; font-size: 0.75rem; }
       /* The waterfall IS the sky: full-width backdrop behind the wave grid,
          from the top of the page to just below the horizon (grid line = 20vh).
@@ -262,7 +248,8 @@
         <div id="mw-list"></div>
       </div>
     `;
-    document.body.appendChild(overlay);
+    const mount = document.getElementById('sonics-mount');
+    (mount || document.body).appendChild(overlay);
 
     // full-page sky canvas + phase-scope overlay on the same rect: both sit
     // between crt-media (z1) and the horizon grid (z2)
@@ -290,12 +277,16 @@
     sctx = scope.getContext('2d');
     buildIndex();
 
-    overlay.querySelector('#mw-close').addEventListener('click', closeWindow);
+    overlay.querySelector('#mw-close').addEventListener('click', () => {
+      if (window.APP) window.APP.close(); else closeWindow();
+    });
     overlay.querySelector('#mw-fold').addEventListener('click', () => {
-      const win = overlay.querySelector('#music-window');
-      const folded = win.classList.toggle('folded');
-      overlay.querySelector('#mw-fold').textContent = folded ? '[ + ]' : '[ − ]';
-      // folded or not, playback is untouched — the window just folds away
+      if (window.APP) window.APP.toggleFold();
+    });
+    // double-click the header collapses / expands the shared window
+    overlay.querySelector('#mw-handle').addEventListener('dblclick', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      if (window.APP) window.APP.toggleFold();
     });
     filterEl.addEventListener('input', applyFilter);
 
@@ -303,33 +294,39 @@
   }
 
   function bindDrag(handle, win) {
+    // mounted in the shared window, the thing being dragged is the post-window
+    const dragTarget = () => document.getElementById('post-window') || win;
     let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
     handle.addEventListener('mousedown', (e) => {
       if (e.target.tagName === 'BUTTON') return;
       dragging = true;
-      const r = win.getBoundingClientRect();
+      const target = dragTarget();
+      const r = target.getBoundingClientRect();
       sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
-      win.style.transform = 'none';
+      target.style.transform = 'none';
       e.preventDefault();
     });
     document.addEventListener('mousemove', (e) => {
       if (!dragging) return;
-      win.style.left = (ox + e.clientX - sx) + 'px';
-      win.style.top = (oy + e.clientY - sy) + 'px';
+      const t = dragTarget();
+      t.style.left = (ox + e.clientX - sx) + 'px';
+      t.style.top = (oy + e.clientY - sy) + 'px';
     });
     document.addEventListener('mouseup', () => { dragging = false; });
     handle.addEventListener('touchstart', (e) => {
       if (e.target.tagName === 'BUTTON') return;
       dragging = true;
-      const r = win.getBoundingClientRect();
+      const target = dragTarget();
+      const r = target.getBoundingClientRect();
       sx = e.touches[0].clientX; sy = e.touches[0].clientY; ox = r.left; oy = r.top;
-      win.style.transform = 'none';
+      target.style.transform = 'none';
       e.preventDefault();
     }, { passive: false });
     document.addEventListener('touchmove', (e) => {
       if (!dragging) return;
-      win.style.left = (ox + e.touches[0].clientX - sx) + 'px';
-      win.style.top = (oy + e.touches[0].clientY - sy) + 'px';
+      const t = dragTarget();
+      t.style.left = (ox + e.touches[0].clientX - sx) + 'px';
+      t.style.top = (oy + e.touches[0].clientY - sy) + 'px';
     }, { passive: false });
     document.addEventListener('touchend', () => { dragging = false; });
   }
@@ -373,7 +370,7 @@
     const h = decodeURIComponent(location.hash.replace(/^#/, ''));
     if (!h) return;
     buildDom();
-    openWindow();
+    if (window.APP) window.APP.toggle('sonics'); else openWindow();
     if (h.startsWith('t/')) {
       const [, aSlug, tSlug] = h.split('/');
       const row = rows.find(r => r.albumSlug === aSlug && r.trackSlug === tSlug);
@@ -818,6 +815,7 @@
 
   function openWindow() {
     buildDom();
+    if (window.APP) { window.APP.toggle('sonics'); return; }
     overlay.classList.add('active');
     sizeCanvases();
     running = true;
@@ -829,14 +827,13 @@
     // the sky keeps painting: playback is the main page player's business
   }
 
+  // the shared-window manager shows/hides the mount itself
+  window.MUSIC = { mount: buildDom };
+
   /* ---------------- nav + boot ---------------- */
 
   function wireNav() {
-    const music = document.getElementById('music-link');
-    if (music) music.addEventListener('click', (e) => {
-      e.preventDefault();
-      openWindow();
-    });
+    // handled by index.html's APP.toggle('sonics') — nothing to do here
   }
 
   function boot() {
