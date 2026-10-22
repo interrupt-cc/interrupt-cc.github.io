@@ -17,6 +17,10 @@
         /* One shared window for CV / AI_NOTES / SONICS.
            SONICS mode hides the iframe+chrome and shows the music DOM,
            whose own header becomes the window header. */
+        /* Pass-through overlay: nav links and the page stay clickable while
+           the window is open; only the window itself catches clicks. */
+        #post-overlay.active { pointer-events: none; }
+        #post-overlay.active #post-window { pointer-events: auto; }
         #sonics-mount { display: none; position: absolute; inset: 0; }
         #post-window.sonics #sonics-mount { display: block; }
         #post-window.sonics > .window-header,
@@ -26,7 +30,9 @@
            the top of the screen, styled like a window title bar. */
         #page-header {
             position: fixed; top: 0; left: 0; right: 0;
-            z-index: 600; pointer-events: auto;
+            /* above the shared window (z 10000): the nav links must stay
+               clickable even while the window is open and overlapping */
+            z-index: 10001; pointer-events: auto;
             background: rgba(0, 10, 12, 0.92);
             border-bottom: 1px solid var(--dim-color);
             padding: 8px 16px 10px;
@@ -155,8 +161,9 @@
                 const win = document.getElementById('post-window');
                 const winW = win.offsetWidth || 800;
                 const winH = win.offsetHeight || 600;
+                const headerH = document.getElementById('page-header').offsetHeight + 8;
                 win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
-                win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
+                win.style.top = Math.max(headerH, window.innerHeight / 2 - winH / 2) + 'px';
                 win.style.transform = 'none';
             }
             function toggle(id) {
