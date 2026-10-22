@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x2 // Going Multi-Project</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x2: Going Multi-Project</h2>
+                <p class="post-date">DATE: 2026-07-19 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>For most of its life, RobotNerd had one project: itself. You opened the app, you
+talked to the agent, it worked in <code>robot_nerd/</code>. Sessions were a flat pile of
+files named <code>session_&lt;timestamp&gt;.json</code> — no titles, no summaries, no memory of
+which project they belonged to.</p>
+<p>It worked. But the whole point was a coding companion for <em>any</em> project — the
+website, the CLI tool, the next idea. So the final phase was architectural: turn
+"a chat that happens to edit files" into a multi-project system where every
+project owns its history.</p>
+<p>And then, building that system, I discovered something that perfectly
+illustrates why you keep your fallback around: <strong>there were two Telegram bots,
+and one of them had been quietly holding sessions the whole time.</strong> More on that
+at the end.</p>
+<h2>The Design: Projects as Directories</h2>
+<p>The new model, written up in a living <code>PROJECT_PLAN.md</code> mid-build, is built on a
+simple idea: <strong>every subdirectory of <code>~/Documents</code> is a project.</strong> Zero config.
+<code>robot_nerd</code> (this app's own source) is just another project — self-referential,
+which makes it a perfect dogfooding target.</p>
+<p>Each project owns a <code>.robotnerd/</code> directory <em>inside itself</em>:</p>
+<pre><code>Documents/&lt;project&gt;/
+  .robotnerd/
+    project.json              # { displayName, activeSessionId, ... }
+    summary.md                # AI-generated persistent context
+    sessions/
+      1783738488310.json          # message history
+      1783738488310.meta.json     # { title, createdAt, updatedAt }
+</code></pre>
+<p>Projects are <strong>self-contained and portable</strong> — their entire state lives with
+them. Copy the directory, you copy the history.</p>
+<h3>Project Switching Is a Transport Concern, Not an Agent Concern</h3>
+<p>Switching projects is a <strong>dedicated HTTP endpoint</strong> that the <em>app</em> calls
+directly. It never touches the agent loop — the LLM cannot see, call, or handle
+it. The agent just wakes up in a different directory. Its tools operate relative
+to the project root. It has no concept of "project" — it sees a folder. Clean
+seam.</p>
+<h2>The UI: Projects in the Top Bar</h2>
+<p>A horizontal, scrollable project bar at the top. Below it, a session list for the
+active project: titled, dated cards. Tap one to open the chat. One chat at a
+time, with easy back-navigation. The session list <em>is</em> the tab equivalent.</p>
+<pre><code>┌─────────────────────────────────────┐
+│ [robot_nerd] [website] [cli-tool] ⚙ │  ← scrollable project bar
+├─────────────────────────────────────┤
+│ ▸ Sessions                    + New │
+│   ┌─────────────────────────────┐   │
+│   │ Multi-project: server+app 2h│   │  ← titled cards
+│   │ I Synthesized a Modem     4d│   │
+│   └─────────────────────────────┘   │
+└─────────────────────────────────────┘
+</code></pre>
+<h2>The Migration (and the Bugs)</h2>
+<p>To move from the flat legacy pile to the new structure, I wrote a migration
+script. It introduced three bugs that I didn't catch until the app showed zero
+sessions:</p>
+<ol>
+<li><strong>Floating-point timestamps.</strong> Node's <code>stat.mtimeMs</code> returns floats.
+   Android's <code>Long</code> deserializer throws on fractions. One float killed the
+   entire session list. Fix: <code>Math.round()</code> everywhere.</li>
+<li><strong>Filename mismatch.</strong> History copied as <code>session_&lt;ts&gt;.json</code>, meta written
+   as <code>&lt;ts&gt;.meta.json</code>. They never aligned. Fix: strip the prefix.</li>
+<li><strong>Bogus timestamps.</strong> File-copy times, not real activity times. Fix: the
+   session IDs <em>were</em> the real <code>Date.now()</code> timestamps — use those, and recover
+   genuine mtimes from the originals where they survived.</li>
+</ol>
+<h3>Titles From Git</h3>
+<p>With timestamps fixed, all 36 sessions were still titled "Migrated session." So I
+derived real titles from the <strong>git history</strong> — each session's time-window mapped
+to the commits that landed during it. The session list became a readable timeline
+of the entire project, reconstructed from its own commit log.</p>
+<h2>The Two Bots (Or: Why You Keep Your Fallback)</h2>
+<p>Here's the discovery that ties this whole series together.</p>
+<p>When I went to write these devlogs, I realized the migration had only captured
+<em>some</em> of the history. The reason? <strong>There were two copies of the Telegram bot,
+and the running service used the standalone one</strong> — not the copy inside
+<code>robot_nerd</code> that the migration had pulled from.</p>
+<p>The running bot had been writing sessions to its own directory the entire time.
+Fifteen sessions — including the pivotal <em>"let's build the non-telegram app"</em>
+planning session, and the crash investigations — existed only in that standalone
+directory. They'd been invisible to the app the whole time.</p>
+<p>This is the stone knife lesson, one more time. The fallback you keep running
+doesn't just save you when the new thing breaks — it accumulates its own
+history, its own value, parallel to the main path. I'd been using the bot
+<em>throughout the entire build</em> — to plan, to debug, to recover — and that work
+was real, it just lived in a different place. Migrating those 15 sessions in
+completed the picture: <strong>53 sessions, fully chronological, telling the complete
+story of the build from both transports.</strong></p>
+<p>I migrated all 15, titled them from the git history the same way, and now the
+session list is whole. The app's history matches the reality of how the thing
+was built: two mouths, one brain, interleaved all along.</p>
+<h2>What This Enables</h2>
+<p>Open the app. See your projects in a bar across the top. Tap one. See every
+session that ever happened in it — titled, dated, real. Tap one and pick up
+where you left off. Or hit "+" and the agent's working directory and context
+automatically match the project you chose.</p>
+<p>This is where the "software hot rod" vision starts to pay off across <em>multiple</em>
+projects. The agent that built RobotNerd can now work on the website, the CLI
+tool, whatever's next — each with its own history, its own context, its own
+sessions. Local-first, modular, self-enabling. The same loop — describe, build,
+ship, install — now applies to anything in your <code>Documents</code> folder.</p>
+<h2>The Record of Its Own Making</h2>
+<p>There's something I find deeply satisfying about how this ended.</p>
+<p>The session list — 53 entries, titled, chronological — <em>is</em> the story these
+devlogs tell. Every phase, every bug, every synth oscillator, every crash
+reporter endpoint: it's all there, reconstructed from the commits. The app isn't
+just a tool. It's a record of its own making.</p>
+<p>And it was built by talking to the thing it became. The first lesson of this
+whole project might be the simplest: <strong>build your tools to build your tools.</strong>
+Once you have a coding companion that can upgrade itself, everything after that
+is faster. That's the hello world of this era. Not <code>print("hello")</code> — <em>build the
+thing that prints hello for you, then ask it what else it can do.</em></p>
+<hr />
+<p><em>This is the last devlog in the series. Start from the beginning:
+<a href="00-how-robotnerd-happened.md">How RobotNerd Happened</a>.</em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>

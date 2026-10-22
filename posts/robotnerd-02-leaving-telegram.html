@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x6 // Leaving Telegram</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x6: Leaving Telegram</h2>
+                <p class="post-date">DATE: 2026-07-13 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>The agent could code. That was settled. But Telegram was a chat box, and what I
+wanted was a workshop.</p>
+<p>Telegram gave us a chat box and took everything else. No streaming — you'd
+wait for a wall of text. A 4096-character limit that code doesn't fit in. No
+diffs, no approvals, no presence. It was the right place to <em>start</em> and the
+wrong place to <em>stay</em>.</p>
+<p>But here's the thing I want to be clear about: <strong>I didn't actually leave
+Telegram.</strong> I built a second front end. The bot kept running — rock solid, battle-
+tested, always there — while I built the app alongside it. That redundancy turned
+out to be one of the best decisions in the project. More on that in a bit.</p>
+<h2>The Architectural Decision That Made Everything Possible</h2>
+<p><strong>The transport is a layer, not the product.</strong></p>
+<p>The agent — the loop, the tools, the guardrails — didn't know or care that it
+was being driven by Telegram. It received messages, it produced messages and
+tool calls. Telegram was just the wire.</p>
+<p>So I didn't rewrite the agent. I wrote a <strong>new server</strong> that spoke HTTP +
+Server-Sent Events instead of the Telegram bot API, and I plugged the exact same
+agent into it. The same tools. The same loop detection, the same self-healing.
+New mouth, same brain.</p>
+<pre><code>┌──────────┐   HTTP + SSE    ┌───────────────┐
+│  Phone   │ ←─────────────→ │   Server      │
+│  (App)   │                 │  (agent.js)   │
+└──────────┘                 └───────────────┘
+</code></pre>
+<p>And critically — the Telegram bot kept running too. Two transports, one brain.
+When the app broke, I'd switch to Telegram. When the app worked, I'd use the
+app. I never had a moment where I couldn't reach my own agent.</p>
+<h2>The App: Jetpack Compose</h2>
+<p>The phone app is Kotlin + Jetpack Compose, organized as MVVM:</p>
+<pre><code>data/        BotClient (HTTP+SSE), repositories
+model/       data classes (Session, Message, Activity)
+viewmodel/   ChatViewModel, ProjectsViewModel (state holders)
+ui/          ChatScreen, SettingsScreen, components
+ui/effects/  SoundSynth, particle systems
+renderer/    markdown + diff rendering
+crash/       crash reporter
+fcm/         push notifications
+wearable/    Wear OS integration
+</code></pre>
+<p>The streaming is <strong>Server-Sent Events</strong>. The app opens a long-lived connection
+to <code>/chat/stream</code>, and the server pushes events as they happen: the agent's text
+tokens arriving, tool calls firing, results completing. You watch the agent work
+in real time. That alone was a revelation after Telegram's send-and-wait model.</p>
+<h2>Inline Edit Approvals</h2>
+<p>When the agent calls <code>edit_file</code> or <code>apply_patch</code>, the server holds the edit as
+<strong>pending</strong> and pushes it to the app as an approval card — a red/green diff
+with two buttons:</p>
+<pre><code>┌─────────────────────────────────┐
+│ ✏️  src/server.js               │
+│ ─ const old = thing;            │
+│ + const old = thing || fallback;│
+│                                 │
+│        [ Apply ]  [ Reject ]    │
+└─────────────────────────────────┘
+</code></pre>
+<p>The agent never applies an edit you haven't seen. There's an autonomous mode
+too, but the default is human-in-the-loop — because the default should be safe.</p>
+<h2>The Build Pipeline (Or: The Loop That Made It Real)</h2>
+<p>This is the part that made the whole project click, and I want to dwell on it.</p>
+<p>A phone app is useless if you can't get it onto the phone. So I built a <strong>build
+and ship pipeline</strong> that runs entirely on my own network:</p>
+<ul>
+<li>A <code>publish.sh</code> script builds the APK, names it with the <strong>build number + commit
+  hash</strong> (<code>robotnerd-69-f90384b.apk</code>), and copies it to an archive directory.</li>
+<li>A tiny <strong>APK server</strong> (a static file server) serves those builds.</li>
+<li>The phone downloads them <strong>over Tailscale</strong> — no app store, no review process,
+  no cloud dependency.</li>
+</ul>
+<p>This is the loop that defines the whole project:</p>
+<blockquote>
+<p><strong>agent edits code → agent builds the APK → agent publishes it → I open the
+URL on my phone → install → test → repeat</strong></p>
+</blockquote>
+<p>A complete build-and-deploy cycle in minutes, all on hardware I own, over a
+network I control. The tool ships itself. This is what I mean by <em>self-enabling</em>
+— the app isn't just something I use, it's something that <strong>upgrades itself by
+writing its own software.</strong> I think of a feature, I describe it, and minutes
+later it's in my hand.</p>
+<p>That loop is the real product. Everything else — the chat, the diffs, the sounds
+— exists to serve that loop.</p>
+<h2>Local-First, Modular Providers</h2>
+<p>The agent talks to any OpenAI-compatible endpoint. I can point it at:</p>
+<ul>
+<li><strong>A cloud API</strong> (Z.ai, DeepSeek, Cerebras) for heavy lifting</li>
+<li><strong>A local Ollama instance</strong> on another machine on my tailnet — fully offline,
+  fully private, no per-token cost</li>
+<li><strong>Any combination</strong> — swap providers mid-session if I want a different model's
+  strengths</li>
+</ul>
+<p>This is the "software hot rod" principle: <strong>local-first by default, with the
+modular capability to switch to a service when you want one.</strong> Nothing is locked
+in. The intelligence is a swappable part. You keep everything on your own
+hardware as much as you can, and you reach for a cloud service on your own
+terms, not because the architecture forced you to.</p>
+<h2>The Moment It Worked</h2>
+<p>I remember the first time I opened the app on the couch, typed a request, and
+watched the agent's response <em>stream in word by word.</em> It felt like talking to
+something present — not sending a letter and waiting for a reply, which is what
+Telegram always felt like.</p>
+<p>The app crashed plenty in those early days. That's just what happens when you
+build rich UI fast. But every time it did, I'd switch to the Telegram bot —
+still running, still solid — fix the problem, publish a new build, and try again.
+The stone knife built the laser. And the laser kept getting sharper.</p>
+<p>By the end of this phase I had a streaming chat app with inline approvals, push
+notifications, a build pipeline over Tailscale, and multi-provider support — all
+running on my own network. The foundation was real.</p>
+<p>→ <em>Next: <a href="03-making-it-not-crash.md">Making It Not Crash</a></em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>

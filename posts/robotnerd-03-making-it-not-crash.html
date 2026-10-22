@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x5 // Making It Not Crash</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x5: Making It Not Crash</h2>
+                <p class="post-date">DATE: 2026-07-14 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>Here's a truth about building software fast with an AI agent: you ship bugs
+faster too. The app worked. It also crashed, stuttered, and occasionally got
+stuck. That's not a crisis — it's just the bill that comes with building rich UI
+quickly. You pay it and move on.</p>
+<p>July 14th was reliability day. But I want to reframe what "reliability day"
+actually meant here, because the story isn't <em>"oh no, it kept crashing."</em> The
+story is that <strong>I had a system where crashes didn't slow me down</strong>, because the
+Telegram bot was always there as a fallback, and because the app could report
+its own failures. That combination is what made rapid iteration possible.</p>
+<p>This devlog is a quick tour of the crashes — and then the part that actually
+matters: the self-debugging loop.</p>
+<h2>The Usual Compose Suspects</h2>
+<p>If you build a Jetpack Compose app that streams, animates, and renders rich
+content, you hit a predictable set of walls. Here are the ones I hit:</p>
+<p><strong>The scroll crash.</strong> Rendering messages with an <code>AndroidView</code> wrapping a
+<code>WebView</code> — powerful but heavy. Scroll fast through a long history and you're
+tearing down native views faster than the platform can keep up. Fix: rip out the
+<code>AndroidView</code> entirely, render in pure Compose. Scrolls like butter now.</p>
+<p><strong>Streaming stutter.</strong> Each token recomposed the entire message list. Fix:
+Compose stability annotations, stable list keys, and <strong>delta batching</strong> — flush
+tokens to the UI on a frame-aligned cadence instead of token-by-token. Same
+principle for the particle system: animate on the frame clock.</p>
+<p><strong>"Stuck on Connecting."</strong> The connection state machine treated "caught up and
+idle" as "still connecting." Fix: distinguish "waiting for the first event" from
+"waiting for the next one."</p>
+<p><strong>Layout crashes, keyboard eating the top bar, broken text selection, particles
+dying instantly.</strong> Each was its own small commit — a line or two. The kind of
+fiddly thing that takes an afternoon to find and a minute to fix. None of them
+are clever. They're just the work.</p>
+<h2>The Real Story: The Telegram Fallback</h2>
+<p>Here's what made all of this manageable: <strong>the crashes didn't stop me.</strong></p>
+<p>When the app crashed, I didn't reach for a USB cable and logcat. I switched to
+Telegram — where the original bot was still running, solid as ever — and told
+the agent what happened. The bot would investigate, fix the code, build a new
+APK, publish it to the APK server, and I'd install it over Tailscale and try
+again. The whole loop took minutes.</p>
+<p>That's the value of never decommissioning your fallback. The new app was the
+future, but the old bot was the tool that <em>built</em> the future. I always had a
+working path to my agent, no matter what state the app was in.</p>
+<h2>The Self-Debugging Loop</h2>
+<p>And then there's the piece that made it even better: <strong>the app reports its own
+crashes to the agent.</strong></p>
+<p>The pipeline:</p>
+<ol>
+<li>The app installs a global uncaught-exception handler.</li>
+<li>On crash, it captures the <strong>full stack trace</strong> and POSTs it to the server's
+   <code>/crash</code> endpoint.</li>
+<li>The server <strong>persists</strong> the crash report to disk.</li>
+<li>I tell the agent <em>"the app crashed"</em> and it reads its own crash reports.</li>
+<li>The agent reads the stack trace, identifies the bug, and fixes it.</li>
+</ol>
+<p>The app tells the agent how it died, and the agent brings it back. Over the
+network, from my phone in my pocket. No debug cable, no logcat window, no
+reproduction steps to type out. The crash report <em>is</em> the reproduction step.</p>
+<p>There was even a bug in the crash reporter itself — a local <code>path</code> variable
+shadowed the <code>path</code> module, so crashes weren't being persisted. The agent found
+and fixed that too. The immune system had a bug in its immune system, and it
+healed itself anyway.</p>
+<blockquote>
+<p>Commits: <em>"feat: POST /crash endpoint"</em>, <em>"feat: /crashes command + GET
+/crash"</em>, <em>"fix: crash reports not persisted — local 'path' var shadowed path
+module"</em></p>
+</blockquote>
+<h2>Why This Is The Point</h2>
+<p>This is the loop that makes the whole workflow viable, and it's worth stating
+plainly:</p>
+<p><strong>Crashes are inevitable. What matters is the recovery time.</strong></p>
+<p>With the Telegram bot as a fallback and the crash reporter closing the loop,
+my recovery time was <em>minutes</em>. Crash → switch to Telegram → agent reads the
+trace → agent fixes it → agent publishes a new build → install → done. The app
+never had to be perfect, because the system around it was resilient.</p>
+<p>That's the real lesson of reliability day. It's not <em>"write fewer bugs"</em> — it's
+<em>"build a system where bugs are cheap to fix."</em> Keep your fallback running. Give
+your app a voice to report its own failures. Make the fix-loop fast. Then
+crashes are just part of the rhythm of building, not a crisis.</p>
+<p>By the end of July 14th, the app streamed smoothly, scrolled without dying,
+connected reliably, and reported its own failures. It was solid enough to stop
+worrying about <em>whether it worked</em> — and start thinking about <em>what it should
+feel like.</em> Which is when the modem showed up.</p>
+<p>→ <em>Next: <a href="04-i-synthesized-a-modem.md">I Synthesized a Modem</a></em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>

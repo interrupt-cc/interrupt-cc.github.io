@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0x4 // I Synthesized a Modem</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background: transparent;
+            padding: 2rem;
+        }
+        .post-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .back-link {
+            display: none; /* Hidden inside the iframe */
+        }
+        h2 {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--dim-color);
+            padding-bottom: 0.5rem;
+        }
+        h3, h4 {
+            color: var(--accent-color);
+            margin: 1.5rem 0 0.75rem;
+        }
+        article p {
+            margin-bottom: 1rem;
+        }
+        article ul, article ol {
+            margin: 0 0 1rem 1.5rem;
+        }
+        article li {
+            margin-bottom: 0.35rem;
+        }
+        blockquote {
+            border-left: 3px solid var(--accent-color);
+            margin: 0 0 1rem;
+            padding: 0.25rem 0 0.25rem 1rem;
+            color: var(--dim-color);
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 0 0 1rem;
+            width: 100%;
+            font-size: 0.92rem;
+        }
+        th, td {
+            border: 1px solid var(--dim-color);
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        th {
+            color: var(--accent-color);
+        }
+        pre {
+            background: #000;
+            padding: 1rem;
+            border: 1px solid var(--dim-color);
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        code {
+            color: #fff;
+        }
+        p code, li code, td code {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            padding: 0.05rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <article class="post-content">
+            <header>
+                <h2>0x4: I Synthesized a Modem</h2>
+                <p class="post-date">DATE: 2026-07-15 | PROJECT: ROBOTNERD</p>
+            </header>
+
+<p>Every app needs a soul. Most find it in the interaction design, the
+typography, the motion. RobotNerd found it in a 300-baud acoustic coupler.</p>
+<p>This is the devlog I most wanted to write, because the audio engine is the
+heart of this project, and it's the part that's hardest to explain without
+sounding unhinged. So let me just say what it is and then show you how.</p>
+<p><strong>The app doesn't have any audio files. Every sound it makes is synthesized in
+real time, sample by sample, at 44.1 kHz, in about 600 lines of Kotlin.</strong></p>
+<p>There's a drone bed of ninth chords played as dub-techno stabs through a
+dotted-eighth feedback delay and a Schroeder reverb. There's a noise texture of
+pink noise through resonant filters. There are bell accents. And — the bit that
+makes people look up — <strong>the agent's actual response text is modulated onto Bell
+103 modem carriers and you hear it chirp.</strong></p>
+<p>The agent talks in modem. Let me explain.</p>
+<h2>Why Not Just Play a Sound?</h2>
+<p>The journey started normal. Send a message → <em>boop</em>. Get a response → <em>bloop</em>.
+Generating → ticking. Three one-shot samples, triggered on events. Fine.
+Boring. And, as it turned out, <em>annoying</em> — sharp transient sounds fired
+repeatedly get grating fast. The first feedback was <em>"some of these are super
+sharp and it sounds like it's about to hit."</em></p>
+<p>So I had a choice: curate better samples, or <strong>don't use samples at all</strong>.</p>
+<p>The second option is harder but more interesting. If you synthesize the sound,
+you control its entire character — the timbre, the envelope, the evolution. You
+can make it <em>breathe</em>. A notification is a moment; a soundscape is a <em>presence</em>.
+I wanted the app to feel present. So I threw out the samples and started
+building an engine.</p>
+<h2>Layer 1: FSK Modem Synthesis</h2>
+<p>This is the heart. <strong>FSK</strong> — Frequency-Shift Keying — is how old modems worked:
+a <code>1</code> bit is one frequency, a <code>0</code> bit is another, and you switch between them at
+a baud rate. The classic <strong>Bell 103</strong> standard (300 baud, the original
+acoustic-coupler modem) uses:</p>
+<ul>
+<li><strong>Originate channel:</strong> mark = 1270 Hz, space = 1070 Hz</li>
+<li><strong>Answer channel:</strong> mark = 2225 Hz, space = 2025 Hz</li>
+</ul>
+<p>These are real numbers from a real 1970s standard. And here's the magic trick:
+<strong>I feed the agent's actual response bytes into the FSK encoder.</strong></p>
+<pre><code class="language-kotlin">fun feedData(text: String) {
+    for (b in text.toByteArray(Charsets.UTF_8)) {
+        for (bit in 7 downTo 0) {
+            bitQueue.offer(((b.toInt() shr bit) and 1) == 1)
+        }
+    }
+}
+</code></pre>
+<p>When the agent responds, its words are converted to bytes, each byte to bits,
+and each bit selects a carrier frequency. The result: you hear the agent's
+response as a warbling, chirping modem tone. You can't <em>decode</em> it by ear (I
+mean, you almost can, if you're a 1983 modem), but it sounds exactly right —
+the data-transfer chatter of a connection being made. The carrier alternates
+between originate and answer channels every few seconds, so it has that
+authentic handshake character.</p>
+<p>It's a gimmick in the best sense: technically genuine, sonically evocative, and
+deeply on-brand for a thing called RobotNerd.</p>
+<h2>Layer 2: The Dub Techno Drone</h2>
+<p>The FSK alone would be thin and buzzy. The bed underneath it is a <strong>dub techno
+engine</strong> — think Basic Channel, Maurizio, Deepchord. The signature sound of
+that genre: staccato chord stabs fed into a long feedback delay, where the
+<em>echoes</em> are the actual sustained sound and the dry stabs are just seeds.</p>
+<p>Here's how it's built, layer by layer:</p>
+<p><strong>The chords</strong> are ninth chords — Am9, Dm9, Cmaj9, Fmaj9, and friends. Five
+voices each (root, third, fifth, seventh, ninth). An eight-chord progression
+that cycles, each chord held 16–52 seconds. Ninth chords because they're lush
+and ambiguous — never quite resolving, always drifting.</p>
+<p><strong>The oscillator</strong> is a sine/sawtooth blend. Pure sine is too clean; pure saw
+is too harsh. A Fourier-style saw (sum of harmonics) mixed with a sine gives
+warmth without screech.</p>
+<p><strong>The rhythm</strong> is staccato gating at ~120 BPM. Short rhythmic pulses — 5ms
+attack, 90ms sustain, 50ms release, then rest — with patterns that evolve every
+4–8 bars (eighth-note stabs, quarter-note, syncopated, sparse). This is what
+makes it <em>groove</em> instead of just drone.</p>
+<p><strong>The delay</strong> is the secret weapon: a feedback delay tuned to a <strong>dotted
+eighth</strong> (0.75× the beat). That specific delay time is the entire dub techno
+aesthetic — the echoes fall <em>between</em> the beats, creating a rolling, off-grid
+momentum. And the feedback path has a <strong>one-pole low-pass</strong>, so each echo is
+progressively darker than the last. That darkening is the classic "dub echo"
+sound — the repeats get muddier and warmer as they decay.</p>
+<p><strong>The reverb</strong> is a hand-built <strong>Schroeder reverb</strong>: four comb filters in
+parallel (the classic Freeverb delay lengths — 1116, 1188, 1277, 1356 samples)
+feeding two all-pass filters in series for diffusion. It's a cavernous, dense
+tail. The dry stabs are quiet; the delay + reverb cloud <em>is</em> the sound.</p>
+<p>The master mix balances it: a little dry stab, a lot of delay, a wash of reverb.</p>
+<h2>The Breakthrough: Harmonic Locking</h2>
+<p>Here's the problem I almost shipped, and the fix that saved it.</p>
+<p>The FSK used fixed Bell 103 frequencies: 1270/1070 and 2225/2025 Hz. But the
+drone underneath is playing <em>chords</em> — Am9, Dm9, etc. And 1270 Hz has no
+harmonic relationship to any of those notes. So the modem chirps <em>clashed</em>
+with the chord bed. Dissonant. Harsh. <em>"It sounds like it's about to hit."</em></p>
+<p>The fix was elegant: <strong>derive the FSK carrier frequencies from the current
+chord.</strong> Instead of fixed 1270/1070, use the chord's root and third. Instead of
+2225/2025, use the fifth and ninth, raised two octaves. Now the modem carriers
+are always <strong>harmonically locked</strong> to whatever chord is playing — they're
+intervals <em>within</em> the harmony, not random fixed pitches fighting it.</p>
+<pre><code class="language-kotlin">if (usingAnswerChannel) {
+    markFreq = droneVoices[2].freq * 4f   // 5th, up 2 octaves
+    spaceFreq = droneVoices[4].freq * 4f  // 9th, up 2 octaves
+} else {
+    markFreq = droneVoices[0].freq * octaveMul  // root
+    spaceFreq = droneVoices[1].freq * octaveMul // third
+}
+</code></pre>
+<p>The modem stopped clashing and started <em>singing with</em> the drone. Same data
+chatter, now in tune. That single change transformed the character from
+"annoying" to "alive." It's the detail that makes the whole engine cohere.</p>
+<h2>Layer 3: The Training Sequence</h2>
+<p>Because a modem isn't just data — it <em>connects</em> first. Real modems emit a
+warbling, stuttering <strong>training sequence</strong> before the handshake: the two ends
+negotiate, equalize, sync up. It's that unmistakable <em>bzzz-bzzz-bzzz</em> you heard
+in every 90s movie phone scene.</p>
+<p>So there's a training layer too — but with a twist: it cycles through <strong>four
+different carrier synthesis methods</strong> so it doesn't all sound the same:</p>
+<ul>
+<li><strong>FSK</strong> — mark/space tones (overlapping the data stream but warped)</li>
+<li><strong>QAM</strong> — dual tones summing (richer, offset)</li>
+<li><strong>PSK</strong> — phase reversals (buzzy, clicky)</li>
+<li><strong>Chirp</strong> — frequency sweeps (sci-fi warble)</li>
+</ul>
+<p>And the envelope isn't a smooth fade — it's <strong>play-hard, exponential-decay,
+slam-back-in</strong>. Segments of full blast alternating with decaying tails. That
+stuttering on-off-on-off is the authentic training sound, not a polite fade.</p>
+<h2>Layer 4: Noise Texture &amp; Bells</h2>
+<p><strong>Pink noise</strong> (proper Voss-McCartney-style, not white) through two resonant
+<strong>state-variable band-pass filters</strong> with slowly LFO-modulated cutoffs and
+amplitude swells. It's the airy "air" on top — the texture that fills the highs
+without being harsh. Sparse when idle, denser when active.</p>
+<p><strong>Bells</strong> are plucked tones on send (C5, 523 Hz) and receive (E5, 659 Hz) —
+sine plus a fifth-partial, exponential decay. The only "event" sounds, kept
+soft and short. A nod to the one-shot sounds we started with, now as accents in
+a living bed rather than the whole experience.</p>
+<h2>The Master Bus: Being Kind to Ears</h2>
+<p>Here's a detail born directly from that first feedback — <em>"it sounds like it's
+about to hit."</em> Some people (me included) are sensitive to specific harsh
+frequency ranges — the kind of thing that makes you flinch. So the master bus
+has a <strong>misophonia-safe EQ</strong>: gentle biquad <strong>notches at 2.5, 3.5, and 4.5 kHz</strong>,
+the frequencies that cut. Minus 4–5 dB. It takes the edge off without dulling
+the sound.</p>
+<p>Then a <strong>soft limiter</strong> (<code>x / (1 + |x|*0.5)</code>) to catch peaks gracefully, and a
+master volume. No harsh clipping, ever. The whole engine is designed to be
+<em>pleasant to live with</em> — you're going to hear it a lot.</p>
+<h2>Everything Is a Knob</h2>
+<p>The final touch: every layer has independent controls, surfaced in Settings.
+Volume per layer (drone, noise, FSK, training, bells). Tempo (60–160 BPM).
+Delay multiplier and feedback. Drone filter darkness. Chord octave range.
+Sparseness. The engine isn't a fixed soundscape — it's an <em>instrument</em> you can
+tune to taste. Want it sparse and dark? Turn down the noise, darken the drone,
+lengthen the delay. Want it busy and bright? Crank everything.</p>
+<h2>So, Why?</h2>
+<p>You can build a chat app without any of this. A <em>boop</em> and a <em>bloop</em> would do.
+But here's what I learned: <strong>sound is the fastest path to identity.</strong></p>
+<p>The moment the app stopped playing notifications and started <em>breathing</em> — a
+drone that intensifies when the agent is generating, modem chatter that carries
+its actual words, a reverb tail that lingers after it's done — it stopped being
+"an app with an AI in it" and became <em>a thing</em>. A presence. Something you want
+to open not just to get a task done, but because it feels good to be in.</p>
+<p>600 lines of Kotlin. Zero audio files. A 1970s modem standard. Some dub techno.
+And a coding companion that finally sounded like itself.</p>
+<p>→ <em>Next: <a href="05-going-multi-project.md">Going Multi-Project</a></em></p>
+        </article>
+    </main>
+
+    <footer>
+        <p>[ EOF ]</p>
+    </footer>
+    <script src="../js/syntax.js"></script>
+</body>
+</html>
