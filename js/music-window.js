@@ -656,7 +656,7 @@
   // the center and are periodically averaged into ever-coarser blocks, so
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
-  const FALL_SPREAD = 0.006;  // horizontal stretch per tick (fraction of width)
+  const FALL_SPREAD = 0.016;  // horizontal stretch per tick — the outward pull
   const FALL_PIXEL_EVERY = 9; // ticks between block-averaging passes
   function fallStep() {
     if (!fctx || fall.height < 10) return;
@@ -673,21 +673,17 @@
     fctx.fillStyle = 'rgba(0,0,0,0.008)';
     fctx.fillRect(0, 0, w, h);
 
-    // waterfall of the waterfall: the new row is the sky's fresh CENTER
-    // COLUMN squashed and mirrored outward — bass at the center, spectrum
-    // spreading symmetrically left and right, exactly like the sky emanates.
-    // the level drives saturation/brightness, so loud passages flare vivid
-    // while quiet ones recede instead of flattening into dead color
+    // waterfall of the waterfall: the new row is the sky's MIDDLE HORIZONTAL
+    // LINE — the time-history of the mid band, newest at the sky's center,
+    // past diverging to the edges. Each snapshot drops a row; as rows fall
+    // they're stretched outward, so the history is pulled toward the screen
+    // edges with depth. The level drives saturation/brightness, so loud
+    // passages flare vivid while quiet ones recede.
     if (lut && sky) {
       const lvl = Math.min(1, levelSm * 2.2);
-      const half = Math.floor(sky.width / 2);
-      fctx.save();
-      fctx.translate(w / 2, 0);
+      const midY = Math.max(0, Math.floor(sky.height / 2) - 1);
       fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
-      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
-      fctx.scale(-1, 1);
-      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
-      fctx.restore();
+      fctx.drawImage(sky, 0, midY, sky.width, 2, 0, 0, w, FALL_ROW);
       fctx.filter = 'none';
     }
 
