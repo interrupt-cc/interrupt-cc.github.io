@@ -29,6 +29,11 @@
   let canvas = null;   // the sky waterfall (full-page backdrop)
   let sky = null;
   let scope = null;
+  let fall = null;      // vertical waterfall: emerges below the sky, falls behind the grid
+  let fctx = null;
+  let fallScale = null; // downscaled scratch canvas — one pass = one block-averaging
+  let fsctx = null;
+  let fallTicks = 0;
   let ctx2d = null;
   let sctx = null;
   let rows = [];            // { album, albumSlug, path, idx, name, el }
@@ -93,6 +98,13 @@
       #mw-sky, #mw-scope {
         position: fixed; top: 0; left: 0;
         width: 100vw; height: 26vh;
+        z-index: 1; pointer-events: none; display: block;
+      }
+      /* the fall: starts where the sky ends, runs to the bottom of the page,
+         behind the wave grid (z1 < horizon z2) */
+      #mw-fall {
+        position: fixed; left: 0;
+        width: 100vw;
         z-index: 1; pointer-events: none; display: block;
       }
       #mw-toolbar {
@@ -256,6 +268,12 @@
     scope = document.createElement('canvas');
     scope.id = 'mw-scope';
     document.body.appendChild(scope);
+    fall = document.createElement('canvas');
+    fall.id = 'mw-fall';
+    document.body.appendChild(fall);
+    fctx = fall.getContext('2d');
+    fallScale = document.createElement('canvas');
+    fsctx = fallScale.getContext('2d');
 
     listEl = overlay.querySelector('#mw-list');
     nowEl = overlay.querySelector('#mw-now-name');
@@ -480,6 +498,17 @@
     }
     sky.style.top = headerH + 'px';
     scope.style.top = headerH + 'px';
+
+    // the fall starts where the sky ends and runs to the bottom of the page
+    const fTop = headerH + h;
+    const fh = Math.max(10, window.innerHeight - fTop);
+    if (fall.width !== w || fall.height !== fh) {
+      fall.width = w; fall.height = fh;
+      fall.style.top = fTop + 'px';
+      fall.style.height = fh + 'px';
+      fallScale.width = Math.max(1, Math.floor(w / 10));
+      fallScale.height = Math.max(1, Math.floor(fh / 10));
+    }
   }
 
   // Cold-start history: synthesize a full-width lived-in spectrogram (per-bin
@@ -608,6 +637,59 @@
     ctx2d.lineWidth = 1;
     ctx2d.stroke();
     ctx2d.globalAlpha = 1;
+
+    fallStep();
+  }
+
+  // Vertical fall: the same spectrum pours out from behind the sky and falls
+  // down the page behind the grid. As pixels fall they smear outward from
+  // the center and are periodically averaged into ever-coarser blocks, so
+  // deep content reads as chunky, spread-out squares.
+  const FALL_ROW = 5;         // px dropped per audio tick
+  const FALL_SPREAD = 0.010;  // horizontal stretch per tick (fraction of width)
+  const FALL_PIXEL_EVERY = 6; // ticks between block-averaging passes
+  function fallStep() {
+    if (!fctx || fall.height < 10) return;
+    const w = fall.width, h = fall.height;
+
+    // fall: everything slides down
+    fctx.drawImage(fall, 0, FALL_ROW);
+    // smear: a stretched copy around the center bleeds outward each tick
+    fctx.globalAlpha = 0.45;
+    fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
+    fctx.globalAlpha = 1;
+    // slow depth fade
+    fctx.fillStyle = 'rgba(0,0,0,0.02)';
+    fctx.fillRect(0, 0, w, h);
+
+    // fresh row at the top, same log-frequency mapping as the sky (low left)
+    if (lut) {
+      const grad = fctx.createLinearGradient(0, 0, w, 0);
+      const a = A();
+      if (a && a.masterAnalyser) a.masterAnalyser.getByteFrequencyData(freqBuf);
+      const nyq = a && a.ctx ? a.ctx.sampleRate / 2 : 44100 / 2;
+      for (let r = 0; r <= BINS; r++) {
+        const f = FMIN * Math.pow(FMAX / FMIN, r / BINS);
+        const b = Math.min(freqBuf.length - 1, Math.floor(f / nyq * freqBuf.length));
+        const t = Math.pow(freqBuf[b] / 255, 0.7);
+        grad.addColorStop(r / BINS, lut[Math.min(63, Math.floor(t * 63))]);
+      }
+      fctx.fillStyle = grad;
+      fctx.fillRect(0, 0, w, FALL_ROW);
+    }
+
+    // pixelate: average the whole canvas down, paint back nearest-neighbor.
+    // every pass is cumulative, so the oldest (deepest) pixels are the
+    // blockiest — averaged into big squares as they fall.
+    fallTicks++;
+    if (fallTicks % FALL_PIXEL_EVERY === 0) {
+      fsctx.imageSmoothingEnabled = true;
+      fsctx.clearRect(0, 0, fallScale.width, fallScale.height);
+      fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
+      fctx.imageSmoothingEnabled = false;
+      fctx.clearRect(0, 0, w, h);
+      fctx.drawImage(fallScale, 0, 0, w, h);
+    }
   }
 
   // The phase figure: X = left channel now, Y = right channel delayed by a
