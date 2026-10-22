@@ -51,6 +51,17 @@
 </head>
 
 <body>
+    <!-- Refraction filter for the wave grid: feTurbulence generates a slow
+         wavy displacement field, feDisplacementMap warps the backdrop so
+         content beneath the grid (the fall, media) looks seen through water. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="grid-refract" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="noise">
+          <animate attributeName="seed" from="0" to="100" dur="60s" repeatCount="indefinite" />
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
     <div id="page-header">
         <div class="ph-title">divide by zero<span class="tagline-title">INTERRUPT</span></div>
         <div class="nav-links">

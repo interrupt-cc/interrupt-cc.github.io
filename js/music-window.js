@@ -704,17 +704,36 @@
     // they're stretched outward, so the history is pulled toward the screen
     // edges with depth. The level drives saturation/brightness, so loud
     // passages flare vivid while quiet ones recede.
-    if (lut && sky) {
+    // paint the fall's new row directly from the FFT with a multi-hue gradient
+    // across the full CMY palette (cyan lows, magenta mids, yellow highs) —
+    // every row carries all three colors, so the fall is genuinely colorful
+    // instead of inheriting the sky's single per-column hue.
+    if (lut) {
+      const a = A();
+      if (a && a.masterAnalyser) a.masterAnalyser.getByteFrequencyData(freqBuf);
+      const nyq = a && a.ctx ? a.ctx.sampleRate / 2 : 44100 / 2;
       const lvl = Math.min(1, levelSm * 2.2);
-      // grab a band around the middle line, not a single hairline row —
-      // more frequency bands per snapshot, so the fall carries more colors
-      const bandH = Math.max(4, Math.floor(sky.height * 0.34));
-      const bandY = Math.max(0, Math.floor((sky.height - bandH) / 2));
-      // never desaturate: quiet passages stay colorful, the level just
-      // changes how hot/bright they burn — high dynamic range keeps hue
-      fctx.filter = `saturate(${(1.4 + lvl * 0.9).toFixed(2)}) brightness(${(0.9 + lvl * 0.55).toFixed(2)}) contrast(1.15)`;
-      fctx.drawImage(sky, 0, bandY, sky.width, bandH, 0, 0, w, FALL_ROW);
-      fctx.filter = 'none';
+      // 3-stop gradient: each palette color owns a frequency band
+      const grad = fctx.createLinearGradient(0, 0, w, 0);
+      const fb = (f) => Math.min(freqBuf.length - 1, Math.floor(f / nyq * freqBuf.length));
+      const stops = [
+        { f: FMIN, c: PALETTE[0] },
+        { f: FMIN * Math.pow(FMAX / FMIN, 0.5), c: PALETTE[1 % PALETTE.length] },
+        { f: FMAX, c: PALETTE[2 % PALETTE.length] },
+      ];
+      for (let si = 0; si <= 8; si++) {
+        const t = si / 8;
+        const stopIdx = Math.min(stops.length - 1, Math.floor(t * (stops.length - 1)));
+        const localT = (t * (stops.length - 1)) - stopIdx;
+        const s0 = stops[Math.max(0, stopIdx)], s1 = stops[Math.min(stops.length - 1, stopIdx + 1)];
+        const f = s0.f * Math.pow(s1.f / s0.f, localT);
+        const b = fb(f);
+        const v = Math.pow(freqBuf[b] / 255, 0.7);
+        const alpha = (0.25 + lvl * 0.6) * v;
+        grad.addColorStop(t, `${s0.c}${Math.floor(alpha * 255).toString(16).padStart(2,'0')}`);
+      }
+      fctx.fillStyle = grad;
+      fctx.fillRect(0, 0, w, FALL_ROW);
     }
 
     // pixelate: average the canvas down, paint back nearest-neighbor — but
@@ -733,7 +752,7 @@
       // grey and mud, this pushes saturation AND contrast so the averaged
       // blocks stay punchy — scaled by the level, so volume keeps them alive
       const lvl = Math.min(1, levelSm * 2.2);
-      fctx.filter = `saturate(${(1.45 + lvl * 0.7).toFixed(2)}) contrast(${(1.55 + lvl * 0.5).toFixed(2)})`;
+      fctx.filter = `saturate(${(1.2 + lvl * 0.5).toFixed(2)}) contrast(${(1.35 + lvl * 0.4).toFixed(2)}) brightness(${(0.7 + lvl * 0.4).toFixed(2)})`;
       fctx.drawImage(fallScale, 0, 0, fallScale.width, bandSH, 0, 0, w, bandH);
       fctx.filter = 'none';
     }
