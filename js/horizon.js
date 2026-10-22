@@ -54,6 +54,10 @@ class HorizonGrid {
         this.globalWavelength = 0.15;
         this.edgeDamping = 0.0; // 0=Ribbon, 1+=Captured/Contained
 
+        // VOID EVENTS: the river occasionally bends itself into an elongated
+        // torus/void — a raised rim with a sucked-through center — then relax.
+        this.voidEvent = null;
+
         window.addEventListener('resize', () => this.onResize());
         
         // Tactile Resonance
@@ -168,11 +172,52 @@ class HorizonGrid {
         // Half-sin window: 1 at the front, 0 at the horizon
         const window = 1.0 - Math.pow(zNorm, 2.0); 
         
-        return this.groundY + (yOffset + jitter) * window;
+        // 5. VOID EVENT — elongated torus: raised rim, center sucked through.
+        // Applied AFTER the containment window: vertigo ignores containment.
+        let voidY = 0;
+        const ev = this.voidEvent;
+        if (ev && ev.env > 0) {
+            const dx = (x - ev.cx) / ev.elong;
+            const dz = z - ev.cz;
+            const d = Math.sqrt(dx * dx + dz * dz);
+            const ring = Math.exp(-Math.pow((d - ev.R) / 14.0, 2));
+            const well = Math.exp(-Math.pow(d / (ev.R * 0.8), 2));
+            const churn = Math.sin(d * 0.22 - this.time * 0.09 + Math.atan2(dz, dx) * 3.0) * 8.0;
+            voidY = (ev.rim * ring + ev.depth * well + churn * ring) * ev.env;
+        }
+        
+        return this.groundY + (yOffset + jitter) * window + voidY;
+    }
+
+    spawnVoid() {
+        this.voidEvent = {
+            t: 0,
+            atk: 100 + Math.random() * 80,          // pull-in frames
+            hold: 200 + Math.random() * 150,        // full vertigo hold
+            rel: 260 + Math.random() * 160,         // relax back to river
+            cx: (Math.random() - 0.5) * 120,
+            cz: this.zStart + 30 + Math.random() * 90,
+            R: 55 + Math.random() * 45,             // torus radius (z units)
+            elong: 1.6 + Math.random() * 1.1,       // horizontal stretch
+            rim: 55 + Math.random() * 45,           // rim height
+            depth: -(90 + Math.random() * 70),      // how far the center falls
+            env: 0
+        };
     }
 
     animate() {
         this.time += 1.0;
+
+        // --- VOID EVENT SCHEDULER + ENVELOPE ---
+        if (!this.voidEvent && Math.random() < 0.0008) this.spawnVoid();
+        const v = this.voidEvent;
+        if (v) {
+            v.t++;
+            if (v.t <= v.atk) v.env = v.t / v.atk;
+            else if (v.t <= v.atk + v.hold) v.env = 1.0;
+            else v.env = Math.max(0, 1 - (v.t - v.atk - v.hold) / v.rel);
+            if (v.t > v.atk + v.hold + v.rel) this.voidEvent = null;
+        }
         
         // --- INTERPOLATED ENGINE TRANSITION ---
         const targetBoost = window.CRT_CONFIG?.['boost-contrast'] || 0;
