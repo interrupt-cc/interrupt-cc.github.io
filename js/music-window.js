@@ -445,12 +445,27 @@
     } catch (e) { /* taps are the whole show, but never fatal */ }
   }
 
+  let primed = false;
+
   function sizeCanvases() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w > 0 && canvas.width !== w) {
       canvas.width = w; canvas.height = h;
       scope.width = w; scope.height = h;
+      primed = false; // a resized canvas is a blank one
     }
+  }
+
+  // Cold-start baseline: a dim full-width texture so the bar never opens as
+  // a black void with history missing on one side. Playback paints over it.
+  function primeCanvas() {
+    const w = canvas.width, h = canvas.height;
+    if (!lut) buildLut(gridColor());
+    for (let x = 0; x < w; x += COL_W) {
+      ctx2d.fillStyle = lut[Math.floor(Math.random() * 4)];
+      ctx2d.fillRect(x, 0, COL_W, h);
+    }
+    primed = true;
   }
 
   const BINS = 72;         // vertical frequency rows in the history
@@ -622,6 +637,7 @@
     if (!running) return;
     ensureTaps();
     sizeCanvases();
+    if (!primed) primeCanvas();
 
     // pace columns by the audio clock: FFT scroll rate == sound rate
     const a = A();
