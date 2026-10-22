@@ -175,7 +175,11 @@ class StochasticPlayer {
 
             // Unlocks AudioContext exactly once
             if (window.STOCHASTIC_AUDIO) {
-                window.STOCHASTIC_AUDIO.init().then(() => {
+                window.STOCHASTIC_AUDIO.init().then(async () => {
+                    // mobile: resume within the user gesture or audio stays silent
+                    if (window.STOCHASTIC_AUDIO.ctx && window.STOCHASTIC_AUDIO.ctx.state !== 'running') {
+                        try { await window.STOCHASTIC_AUDIO.ctx.resume(); } catch (e) {}
+                    }
                     // Route HTML5 Audio through the WebAudio Graph for capture
                     if (!this.sourceRouted) {
                         window.STOCHASTIC_AUDIO.routePlayer(this.audioElement);
