@@ -62,10 +62,12 @@
       /* Pass-through overlay: the page behind (nav, feed, signal readout)
          stays fully interactive while the library floats above it. */
       #music-window { pointer-events: auto; }
+      /* No !important on top/left/transform — the drag handler positions
+         the window via inline styles, exactly like the post window. */
       #music-window {
-        width: 94vw !important; max-width: 1100px !important;
-        top: 150px !important; height: calc(100vh - 170px) !important;
-        left: 3vw; transform: none !important;
+        width: 94vw; max-width: 1100px;
+        top: 150px; height: calc(100vh - 170px);
+        left: 3vw; transform: none;
         transition: height 0.4s ease;
       }
       /* Folded: collapse to the title bar, menu-style. Playback continues. */
@@ -74,7 +76,6 @@
       #music-window.folded #mw-toolbar,
       #music-window.folded #mw-list { display: none; }
       #mw-fold { cursor: pointer; font-size: 0.75rem; }
-      .mw-close { order: -1; }
       #mw-vis {
         position: relative; height: 150px; flex: 0 0 auto;
         border-bottom: 1px solid var(--dim-color); background: #000;
@@ -219,9 +220,11 @@
     overlay.innerHTML = `
       <div class="window" id="music-window">
         <div class="window-header" id="mw-handle">
-          <button id="mw-close" class="hacker-btn mw-close">[ CLOSE ]</button>
           <span class="window-title">SONICS</span>
-          <button id="mw-fold" class="hacker-btn">[ − ]</button>
+          <span style="display: flex; gap: 6px; align-items: center;">
+            <button id="mw-fold" class="hacker-btn">[ − ]</button>
+            <button id="mw-close" class="hacker-btn">[ CLOSE ]</button>
+          </span>
         </div>
         <div id="mw-vis">
           <canvas id="mw-spectral"></canvas>
@@ -456,14 +459,26 @@
     }
   }
 
-  // Cold-start baseline: a dim full-width texture so the bar never opens as
-  // a black void with history missing on one side. Playback paints over it.
+  // Cold-start history: synthesize a full-width lived-in spectrogram (per-bin
+  // random walk, bass-weighted, streaky like real material) so a fresh load
+  // or refresh shows a developed timeline immediately. Playback paints over it.
   function primeCanvas() {
     const w = canvas.width, h = canvas.height;
     if (!lut) buildLut(gridColor());
-    for (let x = 0; x < w; x += COL_W) {
-      ctx2d.fillStyle = lut[Math.floor(Math.random() * 4)];
-      ctx2d.fillRect(x, 0, COL_W, h);
+    const cols = Math.floor(w / COL_W);
+    const vals = new Array(BINS);
+    for (let r = 0; r < BINS; r++) {
+      vals[r] = 30 + (1 - r / BINS) * 110 + Math.random() * 30; // bass-weighted base
+    }
+    for (let c = 0; c < cols; c++) {
+      const x = w - (cols - c) * COL_W;
+      for (let r = 0; r < BINS; r++) {
+        vals[r] = Math.max(6, Math.min(255, vals[r] + (Math.random() - 0.48) * 22));
+        const t = Math.pow(vals[r] / 255, 0.7);
+        ctx2d.fillStyle = lut[Math.min(63, Math.floor(t * 63))];
+        const yTop = h - (r + 1) * (h / BINS);
+        ctx2d.fillRect(x, yTop, COL_W, h / BINS + 0.5);
+      }
     }
     primed = true;
   }
