@@ -66,8 +66,12 @@
       }
       #music-overlay.active { opacity: 1; }
       /* Pass-through overlay: the page behind (nav, feed, signal readout)
-         stays fully interactive while the library floats above it. */
-      #music-window { pointer-events: auto; }
+         stays fully interactive while the library floats above it.
+         Closed (not .active) the window is fully inert — invisible AND
+         unclickable, so page clicks can never hit hidden track rows. */
+      #music-window { visibility: visible; transition: visibility 0.4s; }
+      #music-overlay:not(.active) #music-window { visibility: hidden; }
+      #music-overlay.active #music-window { pointer-events: auto; visibility: visible; }
       /* window body fades from solid black at the title bar to translucent
          at the bottom so the sky/grid show through underneath the list */
       #music-window {
