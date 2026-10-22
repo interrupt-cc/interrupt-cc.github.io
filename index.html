@@ -14,24 +14,36 @@
         #post-window.folded { height: 36px !important; min-height: 0; }
         #post-window.folded #post-frame { display: none; }
         #fold-overlay { font-size: 0.75rem; }
+        /* Tagline as a block pinned to the top of the page, above the sky */
+        #tagline-block {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 600; pointer-events: none;
+            font-style: italic; color: var(--dim-color); letter-spacing: 2px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid var(--dim-color);
+            padding: 6px 20px;
+        }
+        #tagline-block .tagline-title {
+            font-style: normal; font-weight: 700;
+            color: var(--text-color); margin-left: 14px; letter-spacing: 4px;
+        }
     </style>
 </head>
 
 <body>
+    <div id="tagline-block">divide by zero<span class="tagline-title">INTERRUPT</span></div>
     <canvas id="horizon-grid"></canvas>
     <canvas id="crt-media"></canvas>
     <canvas id="crt-static"></canvas>
     <div class="gutter">
         <header>
             <div class="intro">
-                <p>divide by zero</p>
                 <div class="nav-links">
                     <a href="#" id="cv-link" class="post-link">[ CV ]</a>
                     <a href="#" id="music-link" class="post-link">[ SONICS ]</a>
                     <a href="#" id="devlog-link" class="post-link">[ AI_NOTES ]</a>
                 </div>
             </div>
-            <h1>INTERRUPT</h1>
         </header>
 
 

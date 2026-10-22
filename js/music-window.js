@@ -26,7 +26,8 @@
   let listEl = null;
   let nowEl = null;
   let filterEl = null;
-  let canvas = null;
+  let canvas = null;   // the sky waterfall (full-page backdrop)
+  let sky = null;
   let scope = null;
   let ctx2d = null;
   let sctx = null;
@@ -76,6 +77,13 @@
       #music-window.folded #mw-toolbar,
       #music-window.folded #mw-list { display: none; }
       #mw-fold { cursor: pointer; font-size: 0.75rem; }
+      /* The waterfall IS the sky: full-width backdrop behind the wave grid,
+         from the top of the page to just below the horizon (grid line = 20vh). */
+      #mw-sky {
+        position: fixed; top: 0; left: 0;
+        width: 100vw; height: 26vh;
+        z-index: 1; pointer-events: none; display: block;
+      }
       #mw-vis {
         position: relative; height: 150px; flex: 0 0 auto;
         border-bottom: 1px solid var(--dim-color); background: #000;
@@ -227,7 +235,6 @@
           </span>
         </div>
         <div id="mw-vis">
-          <canvas id="mw-spectral"></canvas>
           <canvas id="mw-scope"></canvas>
         </div>
         <div id="mw-toolbar">
@@ -239,10 +246,15 @@
     `;
     document.body.appendChild(overlay);
 
+    // full-page sky canvas: sits between crt-media (z1) and the horizon grid (z2)
+    sky = document.createElement('canvas');
+    sky.id = 'mw-sky';
+    document.body.appendChild(sky);
+
     listEl = overlay.querySelector('#mw-list');
     nowEl = overlay.querySelector('#mw-now-name');
     filterEl = overlay.querySelector('#mw-filter');
-    canvas = overlay.querySelector('#mw-spectral');
+    canvas = sky;
     scope = overlay.querySelector('#mw-scope');
     ctx2d = canvas.getContext('2d');
     sctx = scope.getContext('2d');
@@ -451,11 +463,15 @@
   let primed = false;
 
   function sizeCanvases() {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (w > 0 && canvas.width !== w) {
+    // sky spans the full page width, top of page to just below the horizon line (20vh)
+    const w = window.innerWidth, h = Math.round(window.innerHeight * 0.26);
+    if (w > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w; canvas.height = h;
-      scope.width = w; scope.height = h;
       primed = false; // a resized canvas is a blank one
+    }
+    const vw = scope.parentElement.clientWidth, vh = scope.parentElement.clientHeight;
+    if (vw > 0 && (scope.width !== vw || scope.height !== vh)) {
+      scope.width = vw; scope.height = vh;
     }
   }
 
@@ -649,7 +665,6 @@
 
   function loop(ts) {
     try {
-    if (!running) return;
     ensureTaps();
     sizeCanvases();
     if (!primed) primeCanvas();
@@ -670,7 +685,8 @@
       guard++;
     }
     if (audioCarry > COL_STEP * 8) audioCarry = 0;
-    drawPhaseScope();
+    // the scope lives inside the window; the sky waterfall runs either way
+    if (running) drawPhaseScope();
     } catch (e) { console.error('[MUSIC_WINDOW]', e); }
     rafId = requestAnimationFrame(loop);
   }
@@ -681,17 +697,13 @@
     buildDom();
     overlay.classList.add('active');
     sizeCanvases();
-    if (!running) {
-      running = true;
-      rafId = requestAnimationFrame(loop);
-    }
+    running = true;
   }
 
   function closeWindow() {
     overlay.classList.remove('active');
     running = false;
-    if (rafId) cancelAnimationFrame(rafId);
-    // playback is the main page player's business; the window just leaves
+    // the sky keeps painting: playback is the main page player's business
   }
 
   /* ---------------- nav + boot ---------------- */
@@ -712,6 +724,7 @@
     wireNav();
     applyHash();          // a shared deep link wins over the default view
     if (!location.hash) openWindow();  // music page by default on page load
+    rafId = requestAnimationFrame(loop);  // the sky never stops
   }
 
   if (document.readyState === 'loading') {
