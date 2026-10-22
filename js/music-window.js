@@ -528,20 +528,33 @@
 
     // The original phase stamp, drawn into the history AT the center onset:
     // its trail diverges symmetrically with the spectrum it belongs to.
-    const amp = h * 0.44;
-    const cx = half, cy = h / 2;
-    ctx2d.globalAlpha = 0.6;
+    const amp = h * 0.42;
+    tracePhaseShape(ctx2d, half, h / 2, amp, 256);
+    ctx2d.globalAlpha = 0.55;
     ctx2d.strokeStyle = scopeColor();
     ctx2d.lineWidth = 1;
-    ctx2d.beginPath();
-    const N = 256;
-    for (let i = 0; i < N; i++) {
-      const x = cx + lanBuf[i] * amp;
-      const y = cy - ranBuf[i] * amp;
-      if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
-    }
     ctx2d.stroke();
     ctx2d.globalAlpha = 1;
+  }
+
+  // The phase figure: a rotating multi-loop spiral whose radius and angle
+  // are warped by the waveform (mono + a 3ms delayed copy). Rings when the
+  // material is tonal, spirals when it moves — never a static diagonal.
+  let rotPhase = 0;
+  const DELAY = 144; // ~3ms at 48kHz
+  function tracePhaseShape(ctx, cx, cy, amp, N) {
+    rotPhase += 0.004;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const bi = Math.floor((i / N) * lanBuf.length);
+      const s = (lanBuf[bi] + ranBuf[bi]) * 0.5;
+      const sd = bi >= DELAY ? lanBuf[bi - DELAY] : lanBuf[bi];
+      const r = (0.30 + 0.34 * (s * 0.9 + sd * 0.5)) * amp;
+      const phi = (i / N) * Math.PI * 3 + rotPhase + sd * 2.0;
+      const x = cx + Math.cos(phi) * r;
+      const y = cy + Math.sin(phi) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
   }
 
   // Stereo Lissajous on a dedicated overlay: cleared every frame, so the
@@ -558,18 +571,12 @@
     sctx.stroke();
 
     if (!tapsReady) return;
-    const cx = w / 2, cy = h / 2, amp = h * 0.44;
-    sctx.beginPath();
-    const N = 512;
-    for (let i = 0; i < N; i++) {
-      const x = cx + lanBuf[i] * amp;
-      const y = cy - ranBuf[i] * amp;
-      if (i === 0) sctx.moveTo(x, y); else sctx.lineTo(x, y);
-    }
+    const cx = w / 2, cy = h / 2, amp = h * 0.46;
+    tracePhaseShape(sctx, cx, cy, amp, 720);
     sctx.strokeStyle = scopeColor();
     sctx.lineWidth = 2;
     sctx.shadowColor = scopeColor();
-    sctx.shadowBlur = 6;
+    sctx.shadowBlur = 8;
     sctx.stroke();
     sctx.shadowBlur = 0;
   }
