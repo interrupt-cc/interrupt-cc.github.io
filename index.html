@@ -11,31 +11,42 @@
         /* Folded post/devlog window: collapse to the title bar only.
            The frame (and whatever it was playing) stays loaded underneath. */
         #post-window { transition: height 0.4s ease; overflow: hidden; }
-        #post-window.folded { height: 36px !important; min-height: 0; }
+        #post-window.folded { height: var(--pw-header-h, 50px) !important; min-height: 0; }
         #post-window.folded #post-frame { display: none; }
         #fold-overlay { font-size: 0.75rem; }
+        /* Whole-page window header: title row + nav links row, one block at
+           the top of the screen, styled like a window title bar. */
+        #page-header {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 600; pointer-events: auto;
+            background: rgba(0, 10, 12, 0.92);
+            border-bottom: 1px solid var(--dim-color);
+            padding: 8px 16px 10px;
+        }
+        #page-header .ph-title {
+            font-style: italic; color: var(--dim-color); letter-spacing: 2px;
+            padding-bottom: 8px;
+        }
+        #page-header .ph-title .tagline-title {
+            font-style: normal; font-weight: 700;
+            color: var(--text-color); margin-left: 14px; letter-spacing: 4px;
+        }
+        #page-header .nav-links { margin: 0; }
     </style>
 </head>
 
 <body>
+    <div id="page-header">
+        <div class="ph-title">divide by zero<span class="tagline-title">INTERRUPT</span></div>
+        <div class="nav-links">
+            <a href="#" id="cv-link" class="post-link">[ CV ]</a>
+            <a href="#" id="music-link" class="post-link">[ SONICS ]</a>
+            <a href="#" id="devlog-link" class="post-link">[ AI_NOTES ]</a>
+        </div>
+    </div>
     <canvas id="horizon-grid"></canvas>
     <canvas id="crt-media"></canvas>
     <canvas id="crt-static"></canvas>
-    <div class="gutter">
-        <header>
-            <div class="intro">
-                <p>divide by zero</p>
-                <div class="nav-links">
-                    <a href="#" id="cv-link" class="post-link">[ CV ]</a>
-                    <a href="#" id="music-link" class="post-link">[ SONICS ]</a>
-                    <a href="#" id="devlog-link" class="post-link">[ AI_NOTES ]</a>
-                </div>
-            </div>
-            <h1>INTERRUPT</h1>
-        </header>
-
-
-    </div>
 
     <div id="post-overlay">
         <div class="window" id="post-window">
@@ -109,6 +120,22 @@
                 window.CRT_CONFIG = { ...window.CRT_CONFIG, ...event.data.config };
             }
         });
+
+        // The page header owns the very top: push the wave-grid canvas below
+        // it (never shrunk), same as the sky visualizer.
+        function dropBelowHeader() {
+            const hh = document.getElementById('page-header').offsetHeight;
+            document.getElementById('horizon-grid').style.top = hh + 'px';
+        }
+        dropBelowHeader();
+        window.addEventListener('resize', dropBelowHeader);
+
+        // folded post window collapses to its real title-bar height
+        function sizeFoldedPost() {
+            const h = Math.ceil(document.getElementById('window-handle').offsetHeight) + 1;
+            document.getElementById('post-window').style.setProperty('--pw-header-h', h + 'px');
+        }
+        requestAnimationFrame(sizeFoldedPost);
 
         document.querySelectorAll('.post-link').forEach(link => {
             link.addEventListener('click', (e) => {

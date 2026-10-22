@@ -26,8 +26,14 @@
   let listEl = null;
   let nowEl = null;
   let filterEl = null;
-  let canvas = null;
+  let canvas = null;   // the sky waterfall (full-page backdrop)
+  let sky = null;
   let scope = null;
+  let fall = null;      // vertical waterfall: emerges below the sky, falls behind the grid
+  let fctx = null;
+  let fallScale = null; // downscaled scratch canvas — one pass = one block-averaging
+  let fsctx = null;
+  let fallTicks = 0;
   let ctx2d = null;
   let sctx = null;
   let rows = [];            // { album, albumSlug, path, idx, name, el }
@@ -62,25 +68,45 @@
       /* Pass-through overlay: the page behind (nav, feed, signal readout)
          stays fully interactive while the library floats above it. */
       #music-window { pointer-events: auto; }
+      /* window body fades from solid black at the title bar to translucent
+         at the bottom so the sky/grid show through underneath the list */
       #music-window {
-        width: 94vw !important; max-width: 1100px !important;
-        top: 150px !important; height: calc(100vh - 170px) !important;
-        left: 3vw; transform: none !important;
+        background: linear-gradient(to bottom,
+          rgba(0, 0, 0, 0.97) 0%,
+          rgba(0, 0, 0, 0.88) 45%,
+          rgba(0, 0, 0, 0.55) 75%,
+          rgba(0, 0, 0, 0.15) 100%);
+      }
+      /* No !important on top/left/transform — the drag handler positions
+         the window via inline styles, exactly like the post window. */
+      #music-window {
+        width: 94vw; max-width: 1100px;
+        top: 150px; height: calc(100vh - 170px);
+        left: 3vw; transform: none;
         transition: height 0.4s ease;
       }
-      /* Folded: collapse to the title bar, menu-style. Playback continues. */
-      #music-window.folded { height: 36px !important; min-height: 0; }
+      /* Folded: collapse to the title bar, menu-style. Playback continues.
+         height:auto collapses exactly to the header — nothing gets clipped. */
+      #music-window.folded { height: auto !important; min-height: 0; }
       #music-window.folded #mw-vis,
       #music-window.folded #mw-toolbar,
       #music-window.folded #mw-list { display: none; }
       #mw-fold { cursor: pointer; font-size: 0.75rem; }
-      .mw-close { order: -1; }
-      #mw-vis {
-        position: relative; height: 150px; flex: 0 0 auto;
-        border-bottom: 1px solid var(--dim-color); background: #000;
+      /* The waterfall IS the sky: full-width backdrop behind the wave grid,
+         from the top of the page to just below the horizon (grid line = 20vh).
+         The phase scope overlays the same rect. */
+      #mw-sky, #mw-scope {
+        position: fixed; top: 0; left: 0;
+        width: 100vw; height: 26vh;
+        z-index: 1; pointer-events: none; display: block;
       }
-      #mw-spectral, #mw-scope { width: 100%; height: 100%; display: block; }
-      #mw-scope { position: absolute; inset: 0; }
+      /* the fall: starts where the sky ends, runs to the bottom of the page,
+         behind the wave grid (z1 < horizon z2) */
+      #mw-fall {
+        position: fixed; left: 0;
+        width: 100vw;
+        z-index: 1; pointer-events: none; display: block;
+      }
       #mw-toolbar {
         display: flex; align-items: center; gap: 12px; flex: 0 0 auto;
         padding: 8px 14px; border-bottom: 1px solid var(--dim-color);
@@ -219,13 +245,11 @@
     overlay.innerHTML = `
       <div class="window" id="music-window">
         <div class="window-header" id="mw-handle">
-          <button id="mw-close" class="hacker-btn mw-close">[ CLOSE ]</button>
           <span class="window-title">SONICS</span>
-          <button id="mw-fold" class="hacker-btn">[ − ]</button>
-        </div>
-        <div id="mw-vis">
-          <canvas id="mw-spectral"></canvas>
-          <canvas id="mw-scope"></canvas>
+          <span style="display: flex; gap: 6px; align-items: center;">
+            <button id="mw-fold" class="hacker-btn">[ − ]</button>
+            <button id="mw-close" class="hacker-btn">[ CLOSE ]</button>
+          </span>
         </div>
         <div id="mw-toolbar">
           <div id="mw-now"><span class="mw-now-label">NOW_PLAYING: </span><span id="mw-now-name">—</span></div>
@@ -236,11 +260,28 @@
     `;
     document.body.appendChild(overlay);
 
+    // full-page sky canvas + phase-scope overlay on the same rect: both sit
+    // between crt-media (z1) and the horizon grid (z2)
+    sky = document.createElement('canvas');
+    sky.id = 'mw-sky';
+    document.body.appendChild(sky);
+    scope = document.createElement('canvas');
+    scope.id = 'mw-scope';
+    document.body.appendChild(scope);
+    fall = document.createElement('canvas');
+    fall.id = 'mw-fall';
+    // below the media images (same z, earlier in DOM) so they composite
+    // between the fall and the wave grid
+    const media = document.getElementById('crt-media');
+    media.parentNode.insertBefore(fall, media);
+    fctx = fall.getContext('2d');
+    fallScale = document.createElement('canvas');
+    fsctx = fallScale.getContext('2d');
+
     listEl = overlay.querySelector('#mw-list');
     nowEl = overlay.querySelector('#mw-now-name');
     filterEl = overlay.querySelector('#mw-filter');
-    canvas = overlay.querySelector('#mw-spectral');
-    scope = overlay.querySelector('#mw-scope');
+    canvas = sky;
     ctx2d = canvas.getContext('2d');
     sctx = scope.getContext('2d');
     buildIndex();
@@ -448,22 +489,51 @@
   let primed = false;
 
   function sizeCanvases() {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (w > 0 && canvas.width !== w) {
+    // the header sits ABOVE the sky: the sky keeps its full 26vh height but
+    // starts below the header, pushed down — never shrunk. the scope canvas
+    // covers the same rect.
+    const headerH = (document.getElementById('page-header') || {}).offsetHeight || 0;
+    const w = window.innerWidth, h = Math.round(window.innerHeight * 0.26);
+    if (w > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w; canvas.height = h;
       scope.width = w; scope.height = h;
       primed = false; // a resized canvas is a blank one
     }
+    sky.style.top = headerH + 'px';
+    scope.style.top = headerH + 'px';
+
+    // the fall starts where the sky ends and runs to the bottom of the page
+    const fTop = headerH + h;
+    const fh = Math.max(10, window.innerHeight - fTop);
+    if (fall.width !== w || fall.height !== fh) {
+      fall.width = w; fall.height = fh;
+      fall.style.top = fTop + 'px';
+      fall.style.height = fh + 'px';
+      fallScale.width = Math.max(1, Math.floor(w / 10));
+      fallScale.height = Math.max(1, Math.floor(fh / 10));
+    }
   }
 
-  // Cold-start baseline: a dim full-width texture so the bar never opens as
-  // a black void with history missing on one side. Playback paints over it.
+  // Cold-start history: synthesize a full-width lived-in spectrogram (per-bin
+  // random walk, bass-weighted, streaky like real material) so a fresh load
+  // or refresh shows a developed timeline immediately. Playback paints over it.
   function primeCanvas() {
     const w = canvas.width, h = canvas.height;
     if (!lut) buildLut(gridColor());
-    for (let x = 0; x < w; x += COL_W) {
-      ctx2d.fillStyle = lut[Math.floor(Math.random() * 4)];
-      ctx2d.fillRect(x, 0, COL_W, h);
+    const cols = Math.floor(w / COL_W);
+    const vals = new Array(BINS);
+    for (let r = 0; r < BINS; r++) {
+      vals[r] = 30 + (1 - r / BINS) * 110 + Math.random() * 30; // bass-weighted base
+    }
+    for (let c = 0; c < cols; c++) {
+      const x = w - (cols - c) * COL_W;
+      for (let r = 0; r < BINS; r++) {
+        vals[r] = Math.max(6, Math.min(255, vals[r] + (Math.random() - 0.48) * 22));
+        const t = Math.pow(vals[r] / 255, 0.7);
+        ctx2d.fillStyle = lut[Math.min(63, Math.floor(t * 63))];
+        const yTop = h - (r + 1) * (h / BINS);
+        ctx2d.fillRect(x, yTop, COL_W, h / BINS + 0.5);
+      }
     }
     primed = true;
   }
@@ -516,6 +586,17 @@
     return PALETTE[(i + 1) % PALETTE.length] || '#FF00FF';
   }
 
+  // the phase figure wears the INVERSE of the scene color so it never melts
+  // into the waterfall — it reads as its own artifact object in the frame
+  function invertHex(hex) {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return '#' + [255 - ((n >> 16) & 255), 255 - ((n >> 8) & 255), 255 - (n & 255)]
+      .map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  function phaseColor() {
+    return invertHex(scopeColor());
+  }
+
   function readTaps() {
     const a = A();
     if (!a || !a.masterAnalyser || !tapsReady) return false;
@@ -566,10 +647,72 @@
     const amp = h * 0.42;
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
     ctx2d.globalAlpha = 0.55;
-    ctx2d.strokeStyle = scopeColor();
+    ctx2d.strokeStyle = phaseColor();
     ctx2d.lineWidth = 1;
     ctx2d.stroke();
     ctx2d.globalAlpha = 1;
+
+    fallStep();
+  }
+
+  // Vertical fall: the same spectrum pours out from behind the sky and falls
+  // down the page behind the grid. As pixels fall they smear outward from
+  // the center and are periodically averaged into ever-coarser blocks, so
+  // deep content reads as chunky, spread-out squares.
+  const FALL_ROW = 5;         // px dropped per audio tick
+  const FALL_SPREAD = 0.006;  // horizontal stretch per tick (fraction of width)
+  const FALL_PIXEL_EVERY = 9; // ticks between block-averaging passes
+  function fallStep() {
+    if (!fctx || fall.height < 10) return;
+    const w = fall.width, h = fall.height;
+
+    // fall: everything slides down
+    fctx.drawImage(fall, 0, FALL_ROW);
+    // smear: a stretched copy around the center bleeds outward each tick
+    // (kept faint so the bands stay crisp instead of greying out)
+    fctx.globalAlpha = 0.25;
+    fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
+    fctx.globalAlpha = 1;
+    // very slow depth fade
+    fctx.fillStyle = 'rgba(0,0,0,0.008)';
+    fctx.fillRect(0, 0, w, h);
+
+    // waterfall of the waterfall: the new row is the sky's fresh CENTER
+    // COLUMN squashed and mirrored outward — bass at the center, spectrum
+    // spreading symmetrically left and right, exactly like the sky emanates.
+    // the level drives saturation/brightness, so loud passages flare vivid
+    // while quiet ones recede instead of flattening into dead color
+    if (lut && sky) {
+      const lvl = Math.min(1, levelSm * 2.2);
+      const half = Math.floor(sky.width / 2);
+      fctx.save();
+      fctx.translate(w / 2, 0);
+      fctx.filter = `saturate(${(0.85 + lvl * 1.5).toFixed(2)}) brightness(${(0.82 + lvl * 0.6).toFixed(2)})`;
+      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.scale(-1, 1);
+      fctx.drawImage(sky, half - 1, 0, 2, sky.height, -w / 2, 0, w / 2, FALL_ROW);
+      fctx.restore();
+      fctx.filter = 'none';
+    }
+
+    // pixelate: average the whole canvas down, paint back nearest-neighbor.
+    // every pass is cumulative, so the oldest (deepest) pixels are the
+    // blockiest — averaged into big squares as they fall.
+    fallTicks++;
+    if (fallTicks % FALL_PIXEL_EVERY === 0) {
+      fsctx.imageSmoothingEnabled = true;
+      fsctx.clearRect(0, 0, fallScale.width, fallScale.height);
+      fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
+      fctx.imageSmoothingEnabled = false;
+      // re-saturate while painting back: averaging pulls colors toward grey,
+      // this pushes them back out so the blocks stay vivid — and the current
+      // level decides how hard, so volume keeps the colors alive
+      const lvl = Math.min(1, levelSm * 2.2);
+      fctx.filter = `saturate(${(1.3 + lvl * 0.9).toFixed(2)}) contrast(${(1.2 + lvl * 0.4).toFixed(2)})`;
+      fctx.clearRect(0, 0, w, h);
+      fctx.drawImage(fallScale, 0, 0, w, h);
+      fctx.filter = 'none';
+    }
   }
 
   // The phase figure: X = left channel now, Y = right channel delayed by a
@@ -624,9 +767,9 @@
     if (!tapsReady) return;
     const cx = w / 2, cy = h / 2, amp = h * 0.46;
     tracePhaseShape(sctx, cx, cy, amp, 720);
-    sctx.strokeStyle = scopeColor();
+    sctx.strokeStyle = phaseColor();
     sctx.lineWidth = 2;
-    sctx.shadowColor = scopeColor();
+    sctx.shadowColor = phaseColor();
     sctx.shadowBlur = 8;
     sctx.stroke();
     sctx.shadowBlur = 0;
@@ -634,7 +777,6 @@
 
   function loop(ts) {
     try {
-    if (!running) return;
     ensureTaps();
     sizeCanvases();
     if (!primed) primeCanvas();
@@ -655,6 +797,8 @@
       guard++;
     }
     if (audioCarry > COL_STEP * 8) audioCarry = 0;
+    // the phase figure lives on the sky overlay, not in the window —
+    // it keeps drawing whether or not SONICS is open
     drawPhaseScope();
     } catch (e) { console.error('[MUSIC_WINDOW]', e); }
     rafId = requestAnimationFrame(loop);
@@ -666,17 +810,13 @@
     buildDom();
     overlay.classList.add('active');
     sizeCanvases();
-    if (!running) {
-      running = true;
-      rafId = requestAnimationFrame(loop);
-    }
+    running = true;
   }
 
   function closeWindow() {
     overlay.classList.remove('active');
     running = false;
-    if (rafId) cancelAnimationFrame(rafId);
-    // playback is the main page player's business; the window just leaves
+    // the sky keeps painting: playback is the main page player's business
   }
 
   /* ---------------- nav + boot ---------------- */
@@ -695,8 +835,9 @@
     injectTransport();
     hookPlayer();
     wireNav();
-    applyHash();          // a shared deep link wins over the default view
-    if (!location.hash) openWindow();  // music page by default on page load
+    applyHash();          // a shared deep link opens the window
+    // the sky is the landing view; the window opens via [ SONICS ] or a deep link
+    rafId = requestAnimationFrame(loop);  // the sky never stops
   }
 
   if (document.readyState === 'loading') {
