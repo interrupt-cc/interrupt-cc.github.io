@@ -730,8 +730,8 @@
     injectTransport();
     hookPlayer();
     wireNav();
-    applyHash();          // a shared deep link wins over the default view
-    if (!location.hash) openWindow();  // music page by default on page load
+    applyHash();          // a shared deep link opens the window
+    // the sky is the landing view; the window opens via [ SONICS ] or a deep link
     rafId = requestAnimationFrame(loop);  // the sky never stops
   }
 
