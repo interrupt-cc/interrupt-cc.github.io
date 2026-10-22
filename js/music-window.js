@@ -95,12 +95,6 @@
         width: 100vw; height: 26vh;
         z-index: 1; pointer-events: none; display: block;
       }
-      #mw-vis {
-        position: relative; height: 150px; flex: 0 0 auto;
-        border-bottom: 1px solid var(--dim-color); background: #000;
-      }
-      #mw-spectral, #mw-scope { width: 100%; height: 100%; display: block; }
-      #mw-scope { position: absolute; inset: 0; }
       #mw-toolbar {
         display: flex; align-items: center; gap: 12px; flex: 0 0 auto;
         padding: 8px 14px; border-bottom: 1px solid var(--dim-color);
@@ -698,8 +692,9 @@
       guard++;
     }
     if (audioCarry > COL_STEP * 8) audioCarry = 0;
-    // the scope lives inside the window; the sky waterfall runs either way
-    if (running) drawPhaseScope();
+    // the phase figure lives on the sky overlay, not in the window —
+    // it keeps drawing whether or not SONICS is open
+    drawPhaseScope();
     } catch (e) { console.error('[MUSIC_WINDOW]', e); }
     rafId = requestAnimationFrame(loop);
   }
