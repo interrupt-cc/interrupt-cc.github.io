@@ -155,21 +155,12 @@ class StochasticPlayer {
         playerUI.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <div id="sp-toggle" style="cursor: pointer; font-weight: bold; margin-right: 10px; font-size: 1.2rem; color: var(--accent-color);">+</div>
-                <div id="sp-body" style="transition: max-height 0.4s ease, opacity 0.4s ease; overflow: hidden;">
+                <div>
                    <div id="sp-status" style="color: var(--accent-color); margin-bottom: 2px;">[ SIGNAL_STREAM_STANDBY ]</div>
                    <div id="sp-track" style="opacity: 0.6; font-size: 0.75rem;">AWAITING OPTIC SYNC</div>
                 </div>
-                <div id="sp-fold" title="FOLD_INTERFACE" style="cursor: pointer; margin-left: 12px; font-size: 0.9rem; color: var(--dim-color); border: 1px solid var(--dim-color); padding: 2px 7px; user-select: none;">−</div>
             </div>
         `;
-
-        // Fold the interface down to the [+]/[−] pill, menu-style
-        const fold = playerUI.querySelector('#sp-fold');
-        fold.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const folded = playerUI.classList.toggle('folded');
-            fold.innerText = folded ? '+' : '−';
-        });
 
         playerUI.addEventListener('click', (e) => {
             // Explicitly handle drawer toggle
@@ -309,13 +300,6 @@ class StochasticPlayer {
             .sp-tracklist { max-height: 0px; overflow: hidden; padding-left: 10px; font-size: 0.75rem; transition: max-height 0.3s ease; }
             .sp-track { padding: 3px 0; opacity: 0.6; cursor: pointer; }
             .sp-track:hover { opacity: 1; color: var(--accent-color); }
-            /* Folded readout: collapse the body, transport and drawer to the fold pill */
-            #sp-body { max-height: 60px; }
-            #stochastic-player.folded { padding: 6px 10px; }
-            #stochastic-player.folded #sp-body { max-height: 0px !important; opacity: 0; margin: 0; }
-            #stochastic-player.folded #sp-transport { display: none; }
-            #stochastic-player.folded #sp-drawer { display: none; }
-            #stochastic-player.folded #sp-toggle { display: none; }
         `;
         document.head.appendChild(style);
 

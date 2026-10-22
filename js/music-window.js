@@ -66,7 +66,14 @@
         width: 94vw !important; max-width: 1100px !important;
         top: 150px !important; height: calc(100vh - 170px) !important;
         left: 3vw; transform: none !important;
+        transition: height 0.4s ease;
       }
+      /* Folded: collapse to the title bar, menu-style. Playback continues. */
+      #music-window.folded { height: 36px !important; min-height: 0; }
+      #music-window.folded #mw-vis,
+      #music-window.folded #mw-toolbar,
+      #music-window.folded #mw-list { display: none; }
+      #mw-fold { cursor: pointer; font-size: 0.75rem; }
       .mw-close { order: -1; }
       #mw-vis {
         position: relative; height: 150px; flex: 0 0 auto;
@@ -213,7 +220,8 @@
       <div class="window" id="music-window">
         <div class="window-header" id="mw-handle">
           <button id="mw-close" class="hacker-btn mw-close">[ CLOSE ]</button>
-          <span class="window-title">SONICS::LIBRARY</span>
+          <span class="window-title">SONICS</span>
+          <button id="mw-fold" class="hacker-btn">[ − ]</button>
         </div>
         <div id="mw-vis">
           <canvas id="mw-spectral"></canvas>
@@ -238,6 +246,12 @@
     buildIndex();
 
     overlay.querySelector('#mw-close').addEventListener('click', closeWindow);
+    overlay.querySelector('#mw-fold').addEventListener('click', () => {
+      const win = overlay.querySelector('#music-window');
+      const folded = win.classList.toggle('folded');
+      overlay.querySelector('#mw-fold').textContent = folded ? '[ + ]' : '[ − ]';
+      // folded or not, playback is untouched — the window just folds away
+    });
     filterEl.addEventListener('input', applyFilter);
 
     bindDrag(overlay.querySelector('#mw-handle'), overlay.querySelector('#music-window'));

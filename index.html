@@ -28,7 +28,7 @@
                 <div class="nav-links">
                     <a href="#" id="cv-link" class="post-link">[ CV ]</a>
                     <a href="#" id="music-link" class="post-link">[ SONICS ]</a>
-                    <a href="#" id="devlog-link" class="post-link">[ DEVLOG ]</a>
+                    <a href="#" id="devlog-link" class="post-link">[ AI_NOTES ]</a>
                 </div>
             </div>
             <h1>INTERRUPT</h1>
@@ -40,7 +40,7 @@
     <div id="post-overlay">
         <div class="window" id="post-window">
             <div class="window-header" id="window-handle">
-                <span class="window-title">POST::READ_SYSTEM</span>
+                <span class="window-title">POST</span>
                 <span style="display: flex; gap: 6px; align-items: center;">
                     <button id="fold-overlay" class="hacker-btn">[ − ]</button>
                     <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
@@ -120,7 +120,7 @@
                 const win = document.getElementById('post-window');
                 const title = document.querySelector('.window-title');
                 
-                title.textContent = 'POST::READ_SYSTEM';
+                title.textContent = 'POST';
                 frame.src = url;
                 overlay.classList.add('active');
                 document.body.style.overflow = 'hidden';
@@ -142,7 +142,7 @@
             const win = document.getElementById('post-window');
             const title = document.querySelector('.window-title');
 
-            title.textContent = 'DEVLOG::READ_SYSTEM';
+            title.textContent = 'AI_NOTES';
             frame.src = 'posts/index.html';
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
