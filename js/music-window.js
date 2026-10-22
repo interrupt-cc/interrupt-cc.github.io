@@ -657,7 +657,7 @@
   // deep content reads as chunky, spread-out squares.
   const FALL_ROW = 5;         // px dropped per audio tick
   const FALL_SPREAD = 0.016;  // horizontal stretch per tick — the outward pull
-  const FALL_PIXEL_EVERY = 9; // ticks between block-averaging passes
+  const FALL_PIXEL_EVERY = 12; // ticks between block-averaging passes
   function fallStep() {
     if (!fctx || fall.height < 10) return;
     const w = fall.width, h = fall.height;
@@ -669,8 +669,8 @@
     fctx.globalAlpha = 0.25;
     fctx.drawImage(fall, -w * FALL_SPREAD / 2, FALL_ROW, w * (1 + FALL_SPREAD), h);
     fctx.globalAlpha = 1;
-    // very slow depth fade
-    fctx.fillStyle = 'rgba(0,0,0,0.008)';
+    // slow depth fade — trails linger, the history lives long
+    fctx.fillStyle = 'rgba(0,0,0,0.004)';
     fctx.fillRect(0, 0, w, h);
 
     // waterfall of the waterfall: the new row is the sky's MIDDLE HORIZONTAL
@@ -687,22 +687,24 @@
       fctx.filter = 'none';
     }
 
-    // pixelate: average the whole canvas down, paint back nearest-neighbor.
-    // every pass is cumulative, so the oldest (deepest) pixels are the
-    // blockiest — averaged into big squares as they fall.
+    // pixelate: average the canvas down, paint back nearest-neighbor — but
+    // only the upper band. Deep content stops being re-averaged, so the
+    // blockiness is cut back toward the bottom instead of compounding all
+    // the way down.
     fallTicks++;
     if (fallTicks % FALL_PIXEL_EVERY === 0) {
+      const bandH = Math.floor(h * 0.62);
+      const bandSH = Math.max(1, Math.floor(fallScale.height * 0.62));
       fsctx.imageSmoothingEnabled = true;
-      fsctx.clearRect(0, 0, fallScale.width, fallScale.height);
-      fsctx.drawImage(fall, 0, 0, fallScale.width, fallScale.height);
+      fsctx.clearRect(0, 0, fallScale.width, bandSH);
+      fsctx.drawImage(fall, 0, 0, w, bandH, 0, 0, fallScale.width, bandSH);
       fctx.imageSmoothingEnabled = false;
-      // re-saturate while painting back: averaging pulls colors toward grey,
-      // this pushes them back out so the blocks stay vivid — and the current
-      // level decides how hard, so volume keeps the colors alive
+      // contrast-biased while painting back: averaging pulls colors toward
+      // grey and mud, this pushes saturation AND contrast so the averaged
+      // blocks stay punchy — scaled by the level, so volume keeps them alive
       const lvl = Math.min(1, levelSm * 2.2);
-      fctx.filter = `saturate(${(1.3 + lvl * 0.9).toFixed(2)}) contrast(${(1.2 + lvl * 0.4).toFixed(2)})`;
-      fctx.clearRect(0, 0, w, h);
-      fctx.drawImage(fallScale, 0, 0, w, h);
+      fctx.filter = `saturate(${(1.2 + lvl * 0.8).toFixed(2)}) contrast(${(1.6 + lvl * 0.5).toFixed(2)})`;
+      fctx.drawImage(fallScale, 0, 0, fallScale.width, bandSH, 0, 0, w, bandH);
       fctx.filter = 'none';
     }
   }
