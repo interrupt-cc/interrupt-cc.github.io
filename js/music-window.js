@@ -648,8 +648,11 @@
     tracePhaseShape(ctx2d, half, h / 2, amp, 256);
     ctx2d.globalAlpha = 0.55;
     ctx2d.strokeStyle = phaseColor();
-    ctx2d.lineWidth = 1;
+    ctx2d.lineWidth = 1 + 3 * styleMorph;      // drawing -> coloring
+    ctx2d.shadowColor = phaseColor();
+    ctx2d.shadowBlur = 7 * styleMorph;
     ctx2d.stroke();
+    ctx2d.shadowBlur = 0;
     ctx2d.globalAlpha = 1;
 
     fallStep();
@@ -721,8 +724,11 @@
   // and the smoothed level scales it, so quiet passages collapse small.
   let rotPhase = 0;
   let levelSm = 0;
+  let styleMorph = 0;
   function tracePhaseShape(ctx, cx, cy, amp, N) {
     rotPhase += 0.003;
+    // slow draw<->color morph: 0 = hairline drawing, 1 = glowing coloring
+    styleMorph = 0.5 + 0.5 * Math.sin(rotPhase * 0.35);
     let sum = 0;
     for (let i = 0; i < lanBuf.length; i += 4) {
       const m = (lanBuf[i] + ranBuf[i]) * 0.5;
@@ -768,10 +774,12 @@
     const cx = w / 2, cy = h / 2, amp = h * 0.46;
     tracePhaseShape(sctx, cx, cy, amp, 720);
     sctx.strokeStyle = phaseColor();
-    sctx.lineWidth = 2;
+    sctx.lineWidth = 1.4 + 4 * styleMorph;     // drawing -> coloring
     sctx.shadowColor = phaseColor();
-    sctx.shadowBlur = 8;
+    sctx.shadowBlur = 12 * styleMorph;
+    if (styleMorph > 0.5) sctx.globalCompositeOperation = 'lighter'; // coloring glows additively
     sctx.stroke();
+    sctx.globalCompositeOperation = 'source-over';
     sctx.shadowBlur = 0;
   }
 
