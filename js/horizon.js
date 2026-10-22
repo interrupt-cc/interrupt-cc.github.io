@@ -39,7 +39,7 @@ class HorizonGrid {
         this.focalLength = 400;
         
         this.ripples = [];
-        this.palette = ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
+        this.palette = ['#00FFFF', '#FF00FF', '#FFFF00']; // CMY — no rainbow
         
         // Multi-Mode Color State
         this.currentColor = '#00FFFF';
@@ -61,10 +61,10 @@ class HorizonGrid {
         window.addEventListener('resize', () => this.onResize());
         
         // Tactile Resonance
-        this.canvas.addEventListener('mousedown', () => this.triggerRipple());
+        this.canvas.addEventListener('mousedown', () => this.triggerRipple(false));
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            this.triggerRipple();
+            this.triggerRipple(false);
         });
         
         // Robust Initialization: Fix for "Only shows up on DevTools/Resize"
@@ -91,10 +91,14 @@ class HorizonGrid {
         this.zStart = 10; // Reset zStart to 10 for the loop pivot
     }
 
-    triggerRipple() {
+    // advanceColor=false fires the ripple pulse WITHOUT stepping the palette:
+    // color now changes only on song starts (see music-window.js).
+    triggerRipple(advanceColor = true) {
         const boost = window.CRT_CONFIG?.['boost-contrast'] || 0;
         
-        if (boost > 0.5) {
+        if (!advanceColor) {
+            this.isGradient = false;
+        } else if (boost > 0.5) {
             // [ DIGITAL ENGINE ] - Weighted Stochastic Color Selection
             const r = Math.random();
             if (r < 0.70) {

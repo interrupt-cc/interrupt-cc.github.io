@@ -7,6 +7,14 @@
     <title>INTERRUPT_CC // DEVLOG</title>
     <meta name="description" content="Bare-metal rust, digital instruments, and beaglebone adventures.">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Folded post/devlog window: collapse to the title bar only.
+           The frame (and whatever it was playing) stays loaded underneath. */
+        #post-window { transition: height 0.4s ease; overflow: hidden; }
+        #post-window.folded { height: 36px !important; min-height: 0; }
+        #post-window.folded #post-frame { display: none; }
+        #fold-overlay { font-size: 0.75rem; }
+    </style>
 </head>
 
 <body>
@@ -26,58 +34,17 @@
             <h1>INTERRUPT</h1>
         </header>
 
-        <main>
-            <section class="feed">
-                <ul class="post-list">
-                    <li class="post-item">
-                        <span class="post-id">0x1</span>
-                        <a href="posts/deluge-legacy-filters.html" class="post-link">Restoring Classic Deluge Filter Character in Community Firmware 1.2</a>
-                        <span class="post-date">2026-08-07</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x2</span>
-                        <a href="posts/robotnerd-05-going-multi-project.html" class="post-link">Going Multi-Project</a>
-                        <span class="post-date">2026-07-19</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x3</span>
-                        <a href="posts/robotnerd-00-how-robotnerd-happened.html" class="post-link">How RobotNerd Happened</a>
-                        <span class="post-date">2026-07-19</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x4</span>
-                        <a href="posts/robotnerd-04-i-synthesized-a-modem.html" class="post-link">I Synthesized a Modem</a>
-                        <span class="post-date">2026-07-15</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x5</span>
-                        <a href="posts/robotnerd-03-making-it-not-crash.html" class="post-link">Making It Not Crash</a>
-                        <span class="post-date">2026-07-14</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x6</span>
-                        <a href="posts/robotnerd-02-leaving-telegram.html" class="post-link">Leaving Telegram</a>
-                        <span class="post-date">2026-07-13</span>
-                    </li>
-                    <li class="post-item">
-                        <span class="post-id">0x7</span>
-                        <a href="posts/robotnerd-01-telegram-bot-that-codes.html" class="post-link">Day 1: A Telegram Bot That Codes</a>
-                        <span class="post-date">2026-07-11</span>
-                    </li>
-                </ul>
-            </section>
-        </main>
 
-        <footer>
-            <p>[ ACCESS_LOG: DELETED ]</p>
-        </footer>
     </div>
 
     <div id="post-overlay">
         <div class="window" id="post-window">
             <div class="window-header" id="window-handle">
                 <span class="window-title">POST::READ_SYSTEM</span>
-                <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
+                <span style="display: flex; gap: 6px; align-items: center;">
+                    <button id="fold-overlay" class="hacker-btn">[ − ]</button>
+                    <button id="close-overlay" class="hacker-btn">[ CLOSE ]</button>
+                </span>
             </div>
             <iframe id="post-frame" src=""></iframe>
         </div>
@@ -167,6 +134,26 @@
             });
         });
 
+        // DEVLOG Link Handler — its own window, same mechanism as CV
+        document.getElementById('devlog-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            const overlay = document.getElementById('post-overlay');
+            const frame = document.getElementById('post-frame');
+            const win = document.getElementById('post-window');
+            const title = document.querySelector('.window-title');
+
+            title.textContent = 'DEVLOG::READ_SYSTEM';
+            frame.src = 'posts/index.html';
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            const winW = win.offsetWidth || 800;
+            const winH = win.offsetHeight || 600;
+            win.style.left = (window.innerWidth / 2 - winW / 2) + 'px';
+            win.style.top = (window.innerHeight / 2 - winH / 2) + 'px';
+            win.style.transform = 'none';
+        });
+
         // CV Link Handler
         document.getElementById('cv-link').addEventListener('click', (e) => {
             e.preventDefault();
@@ -192,6 +179,15 @@
             document.getElementById('post-overlay').classList.remove('active');
             document.getElementById('post-frame').src = '';
             document.body.style.overflow = '';
+        });
+
+        // Fold: collapse the window to its title bar. The frame stays loaded,
+        // so an open devlog (or its audio) is exactly where you left it.
+        document.getElementById('fold-overlay').addEventListener('click', () => {
+            const w = document.getElementById('post-window');
+            const f = document.getElementById('fold-overlay');
+            const folded = w.classList.toggle('folded');
+            f.textContent = folded ? '[ + ]' : '[ − ]';
         });
 
         // Draggable Logic

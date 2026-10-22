@@ -33,6 +33,7 @@
   let rows = [];            // { album, albumSlug, path, idx, name, el }
   let albums = [];          // { name, slug, headEl, bodyEl, indEl, rows }
   let currentPath = null;
+  let lastSongPath = null;
   let running = false;
   let rafId = null;
   let tapsReady = false;
@@ -41,7 +42,6 @@
   let freqBuf = null;
   let lut = null;
   let lutColor = '';
-  let lastRot = 0;
 
   const P = () => window.STOCHASTIC_PLAYER;
   const A = () => window.STOCHASTIC_AUDIO;
@@ -63,8 +63,9 @@
          stays fully interactive while the library floats above it. */
       #music-window { pointer-events: auto; }
       #music-window {
-        width: 94vw !important; max-width: 1100px !important; height: 88vh !important;
-        left: 3vw; top: 5vh; transform: none !important;
+        width: 94vw !important; max-width: 1100px !important;
+        top: 150px !important; height: calc(100vh - 170px) !important;
+        left: 3vw; transform: none !important;
       }
       .mw-close { order: -1; }
       #mw-vis {
@@ -366,6 +367,12 @@
       origUpdate(trackPath);
       const btn = document.getElementById('sp-transport');
       if (btn) btn.innerText = p.isPlaying ? '■' : '▶';
+      // One palette step per song: the spectral takes the advanced color,
+      // the phase scope rides the next entry. No rotation while it plays.
+      if (p.isPlaying && trackPath && trackPath !== lastSongPath) {
+        lastSongPath = trackPath;
+        if (window.HORIZON) window.HORIZON.triggerRipple();
+      }
       if (p.isPlaying && trackPath) {
         currentPath = trackPath;
         highlight(trackPath);
@@ -473,7 +480,7 @@
   // The phase scope rides the NEXT color in the grid's palette cycle, so the
   // line is always offset from whatever the spectral columns are showing.
   const PALETTE = (window.HORIZON && window.HORIZON.palette) ||
-                  ['#00FFFF', '#FF00FF', '#FFFF00', '#00FF00', '#FF0000', '#5555FF'];
+                  ['#00FFFF', '#FF00FF', '#FFFF00'];
   function scopeColor() {
     const cur = gridColor().toUpperCase();
     const i = PALETTE.indexOf(cur);
@@ -512,19 +519,18 @@
     if (!lut) return; // palette unavailable this frame; skip the column
     a.masterAnalyser.getByteFrequencyData(freqBuf);
     const nyq = a.ctx.sampleRate / 2;
-    for (let r = 0; r < BINS; r++) {
-      const f0 = FMIN * Math.pow(FMAX / FMIN, r / BINS);
-      const f1 = FMIN * Math.pow(FMAX / FMIN, (r + 1) / BINS);
-      const b0 = Math.min(freqBuf.length - 1, Math.floor(f0 / nyq * freqBuf.length));
-      const b1 = Math.max(b0 + 1, Math.min(freqBuf.length, Math.ceil(f1 / nyq * freqBuf.length)));
-      let peak = 0;
-      for (let b = b0; b < b1; b++) if (freqBuf[b] > peak) peak = freqBuf[b];
-      const t = peak / 255;
-      if (t < 0.05) continue;
-      ctx2d.fillStyle = lut[Math.min(63, Math.floor(t * 63))];
-      const yTop = h - (r + 1) * (h / BINS);
-      ctx2d.fillRect(half - 1, yTop, COL_W, h / BINS + 0.5);
+
+    // one continuous gradient column, low frequency at the bottom:
+    // every row gets a color, so it reads as a proper spectrogram field
+    const grad = ctx2d.createLinearGradient(0, h, 0, 0);
+    for (let r = 0; r <= BINS; r++) {
+      const f = FMIN * Math.pow(FMAX / FMIN, r / BINS);
+      const b = Math.min(freqBuf.length - 1, Math.floor(f / nyq * freqBuf.length));
+      const t = Math.pow(freqBuf[b] / 255, 0.7);
+      grad.addColorStop(r / BINS, lut[Math.min(63, Math.floor(t * 63))]);
     }
+    ctx2d.fillStyle = grad;
+    ctx2d.fillRect(half - 1, 0, COL_W, h);
 
     // The original phase stamp, drawn into the history AT the center onset:
     // its trail diverges symmetrically with the spectrum it belongs to.
@@ -537,22 +543,38 @@
     ctx2d.globalAlpha = 1;
   }
 
-  // The phase figure: a rotating multi-loop spiral whose radius and angle
-  // are warped by the waveform (mono + a 3ms delayed copy). Rings when the
-  // material is tonal, spirals when it moves — never a static diagonal.
+  // The phase figure: X = left channel now, Y = right channel delayed by a
+  // delay that sweeps slowly back and forth. The same track therefore writes
+  // a continuously different figure — diagonals, ellipses, rings, loops —
+  // and the smoothed level scales it, so quiet passages collapse small.
   let rotPhase = 0;
-  const DELAY = 144; // ~3ms at 48kHz
+  let levelSm = 0;
   function tracePhaseShape(ctx, cx, cy, amp, N) {
-    rotPhase += 0.004;
+    rotPhase += 0.003;
+    let sum = 0;
+    for (let i = 0; i < lanBuf.length; i += 4) {
+      const m = (lanBuf[i] + ranBuf[i]) * 0.5;
+      sum += m * m;
+    }
+    const rms = Math.sqrt(sum / (lanBuf.length / 4));
+    levelSm += (rms - levelSm) * (rms > levelSm ? 0.25 : 0.04);
+    const scale = (0.30 + 0.70 * Math.min(1, levelSm * 2.2)) * amp;
+
+    // sweeping delay: half the buffer range, breathing with rotPhase
+    const d = Math.floor((Math.sin(rotPhase * 0.7) * 0.5 + 0.5) * (lanBuf.length * 0.45));
+
+    // slow drift rotation so the figure's orientation wanders too
+    const cR = Math.cos(rotPhase * 0.21), sR = Math.sin(rotPhase * 0.21);
+
     ctx.beginPath();
     for (let i = 0; i < N; i++) {
-      const bi = Math.floor((i / N) * lanBuf.length);
-      const s = (lanBuf[bi] + ranBuf[bi]) * 0.5;
-      const sd = bi >= DELAY ? lanBuf[bi - DELAY] : lanBuf[bi];
-      const r = (0.30 + 0.34 * (s * 0.9 + sd * 0.5)) * amp;
-      const phi = (i / N) * Math.PI * 3 + rotPhase + sd * 2.0;
-      const x = cx + Math.cos(phi) * r;
-      const y = cy + Math.sin(phi) * r;
+      const bi = Math.floor((i / N) * (lanBuf.length - 1));
+      const bj = Math.max(0, bi - d);
+      let x = cx + lanBuf[bi] * scale;
+      let y = cy - ranBuf[bj] * scale;
+      const dx = x - cx, dy = y - cy;
+      x = cx + dx * cR - dy * sR;
+      y = cy + dx * sR + dy * cR;
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
   }
@@ -604,19 +626,6 @@
     }
     if (audioCarry > COL_STEP * 8) audioCarry = 0;
     drawPhaseScope();
-
-    // Palette rotation: nudge the horizon grid through its color cycle while
-    // the signal plays, so the spectral palette and the grid lines drift
-    // through the palette zones together.
-    if (P() && P().isPlaying) {
-      if (!lastRot) lastRot = ts;
-      if (ts - lastRot > 9000) {
-        lastRot = ts;
-        if (window.HORIZON) window.HORIZON.triggerRipple();
-      }
-    } else {
-      lastRot = 0;
-    }
     } catch (e) { console.error('[MUSIC_WINDOW]', e); }
     rafId = requestAnimationFrame(loop);
   }
@@ -647,13 +656,6 @@
     if (music) music.addEventListener('click', (e) => {
       e.preventDefault();
       openWindow();
-    });
-    const devlog = document.getElementById('devlog-link');
-    if (devlog) devlog.addEventListener('click', (e) => {
-      e.preventDefault();
-      closeWindow();
-      const feed = document.querySelector('.feed');
-      if (feed) feed.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 

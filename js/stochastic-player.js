@@ -424,7 +424,7 @@ class StochasticPlayer {
 
         document.getElementById('btn-mutate-alien').onclick = () => this.mutateAlien();
         document.getElementById('btn-trigger-ripple').onclick = () => {
-            if (window.HORIZON) window.HORIZON.triggerRipple();
+            if (window.HORIZON) window.HORIZON.triggerRipple(false);
         };
 
         document.getElementById('btn-reset').onclick = () => {

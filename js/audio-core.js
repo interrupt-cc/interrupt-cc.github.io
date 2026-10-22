@@ -374,7 +374,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
         this.cloudLock = true;
         
         // Trigger a visual ripple on the Horizon Grid
-        if (window.HORIZON) window.HORIZON.triggerRipple();
+        if (window.HORIZON) window.HORIZON.triggerRipple(false);
         
         // Procedural Macro Envelope generating a slow physical swell over 15 seconds
         let phase = 0;
@@ -453,7 +453,7 @@ registerProcessor('stochastic-granulator', StochasticGranulatorProcessor);
             // 3. Peak Detection for Visuals (Top 1/4 of normalized range)
             const peakThreshold = 0.22; 
             if (rms > peakThreshold && (Date.now() - (this._lastPeakTrigger || 0) > 350)) {
-                if (window.HORIZON) window.HORIZON.triggerRipple();
+                if (window.HORIZON) window.HORIZON.triggerRipple(false);
                 this._lastPeakTrigger = Date.now();
             }
         }, 100);
