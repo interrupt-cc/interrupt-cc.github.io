@@ -78,8 +78,9 @@
       #music-window.folded #mw-list { display: none; }
       #mw-fold { cursor: pointer; font-size: 0.75rem; }
       /* The waterfall IS the sky: full-width backdrop behind the wave grid,
-         from the top of the page to just below the horizon (grid line = 20vh). */
-      #mw-sky {
+         from the top of the page to just below the horizon (grid line = 20vh).
+         The phase scope overlays the same rect. */
+      #mw-sky, #mw-scope {
         position: fixed; top: 0; left: 0;
         width: 100vw; height: 26vh;
         z-index: 1; pointer-events: none; display: block;
@@ -234,9 +235,6 @@
             <button id="mw-close" class="hacker-btn">[ CLOSE ]</button>
           </span>
         </div>
-        <div id="mw-vis">
-          <canvas id="mw-scope"></canvas>
-        </div>
         <div id="mw-toolbar">
           <div id="mw-now"><span class="mw-now-label">NOW_PLAYING: </span><span id="mw-now-name">—</span></div>
           <input type="text" id="mw-filter" placeholder="filter//" autocomplete="off">
@@ -246,16 +244,19 @@
     `;
     document.body.appendChild(overlay);
 
-    // full-page sky canvas: sits between crt-media (z1) and the horizon grid (z2)
+    // full-page sky canvas + phase-scope overlay on the same rect: both sit
+    // between crt-media (z1) and the horizon grid (z2)
     sky = document.createElement('canvas');
     sky.id = 'mw-sky';
     document.body.appendChild(sky);
+    scope = document.createElement('canvas');
+    scope.id = 'mw-scope';
+    document.body.appendChild(scope);
 
     listEl = overlay.querySelector('#mw-list');
     nowEl = overlay.querySelector('#mw-now-name');
     filterEl = overlay.querySelector('#mw-filter');
     canvas = sky;
-    scope = overlay.querySelector('#mw-scope');
     ctx2d = canvas.getContext('2d');
     sctx = scope.getContext('2d');
     buildIndex();
@@ -463,16 +464,18 @@
   let primed = false;
 
   function sizeCanvases() {
-    // sky spans the full page width, top of page to just below the horizon line (20vh)
+    // the header sits ABOVE the sky: the sky keeps its full 26vh height but
+    // starts below the header, pushed down — never shrunk. the scope canvas
+    // covers the same rect.
+    const headerH = (document.getElementById('page-header') || {}).offsetHeight || 0;
     const w = window.innerWidth, h = Math.round(window.innerHeight * 0.26);
     if (w > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w; canvas.height = h;
+      scope.width = w; scope.height = h;
       primed = false; // a resized canvas is a blank one
     }
-    const vw = scope.parentElement.clientWidth, vh = scope.parentElement.clientHeight;
-    if (vw > 0 && (scope.width !== vw || scope.height !== vh)) {
-      scope.width = vw; scope.height = vh;
-    }
+    sky.style.top = headerH + 'px';
+    scope.style.top = headerH + 'px';
   }
 
   // Cold-start history: synthesize a full-width lived-in spectrogram (per-bin
